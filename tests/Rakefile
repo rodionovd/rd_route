@@ -1,0 +1,43 @@
+class String
+	def red;   "\033[1;31m#{self}\033[0m" end
+	def green; "\033[1;32m#{self}\033[0m" end
+	def brown;  "\033[33m#{self}\033[0m" end
+end
+
+task :default => [:build, :tests, :cleanup]
+
+desc "Build tests for «rd_route» with clang(32|64) and gcc(32|64)"
+task :build do
+	# You can build with -DDEBUG to see tests' output
+	system("mkdir build") if (!File.exists?(Dir.getwd+"/src"))
+	system("clang -arch i386  -DDEBUG -framework Foundation -o build/clang_i386 *.m ../*.m")
+	system("clang -arch x86_64  -framework Foundation -o build/clang_x86_64  *.m ../*.m")
+	system("gcc -arch i386  -framework Foundation -std=c99 -o build/gcc_i386 *.m ../*.m")
+	system("gcc -arch x86_64  -framework Foundation -std=c99 -o build/gcc_x86_64 *.m ../*.m")
+
+end
+
+task :tests do
+	checker = 0
+
+	arches = ["clang_i386", "clang_x86_64", "gcc_i386", "gcc_x86_64"]
+	arches.map { |a|
+		system("./build/#{a}")
+		checker += 1 if $?.exitstatus != 0
+		if ($?.exitstatus != 0) then
+			puts "#{a}: ".brown + "FAILED".red
+		else
+			puts "#{a}: ".brown + "PASSED".green
+		end
+	}
+
+	if (0 == checker) then
+		puts "Alright!".green
+	else
+		puts "Not all tests passed".red
+	end
+end
+
+task :cleanup do
+	system("rm -Rf ./build")
+end
