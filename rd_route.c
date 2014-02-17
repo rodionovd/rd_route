@@ -30,24 +30,50 @@ typedef struct rd_injection {
 static rd_injection_t injection_history[kRDInjectionHistoryCapacity] = {{0}};
 static uint16_t       injection_history_length = 0;
 
-static void             *image = NULL;
-static mach_vm_size_t    image_slide = 0;
-static mach_vm_address_t target = 0;
 
-static mach_vm_size_t _get_image_size(void);
-static kern_return_t  _remap_image(void);
+static mach_vm_size_t _get_image_size(void *image, mach_vm_size_t image_slide);
+static kern_return_t  _remap_image(void *image,  mach_vm_size_t image_slide, mach_vm_address_t *new_location);
 static kern_return_t  _hard_hook_function(void* function, void* replacement);
 
 
 int rd_route(void *function, void *replacement, void **original_ptr)
 {
+	int ret = rd_duplicate_function(function, original_ptr);
+	if (ret == KERN_SUCCESS) {
+		ret =  _hard_hook_function(function, replacement);
+	}
+
+	return (ret);
+}
+
+
+int rd_duplicate_function(void *function, void **duplicate)
+{
 	kern_return_t err = KERN_FAILURE;
+
+	if (!function) {
+		return (err);
+	}
+	if (!duplicate) {
+		/* Copy to nowhere == not to copy */
+		return KERN_SUCCESS;
+	}
+
+	void *image = NULL;
+	mach_vm_size_t image_slide = 0;
 
 	/* Obtain the macho header image which contains the function */
 	Dl_info image_info = {0};
 	if (dladdr(function, &image_info)) {
 		image = image_info.dli_fbase;
 	}
+
+	if (!image) {
+		fprintf(stderr, "Could not found an appropriate image\n");
+		return KERN_FAILURE;
+	}
+
+
 	for (uint32_t i = 0; i < _dyld_image_count(); i++) {
 		if (image == _dyld_get_image_header(i)) {
 			image_slide = _dyld_get_image_vmaddr_slide(i);
@@ -55,41 +81,20 @@ int rd_route(void *function, void *replacement, void **original_ptr)
 		}
 	}
 
-	/* Look up the injections history if we already have this image remapped. */
+	/* Look up the injection history if we already have this image remapped. */
 	for (uint16_t i = 0; i < injection_history_length; i++) {
 		if (injection_history[i].injected_mach_header == (mach_vm_address_t)image) {
-			if (original_ptr) {
-				*original_ptr = (void *)injection_history[i].target_address + (function - image);
+			if (duplicate) {
+				*duplicate = (void *)injection_history[i].target_address + (function - image);
 			}
-			return _hard_hook_function(function, replacement);
+			return KERN_SUCCESS;
 		}
 	}
 
-	mach_vm_size_t image_size = _get_image_size();
-
-	/**
-	 * For some reason we need a more free space when in 64-bit mode.
-	 * Looks like _remap_image() remaps a "__DATA" section BEFORE `target` — SO BUG.
-	 * FIX OR DIE.
-	 */
-	target = 0;
-#if defined(__x86_64__)
-	err = mach_vm_allocate(mach_task_self(), &target, image_size*3, VM_FLAGS_ANYWHERE);
-	mach_vm_size_t lefover = image_size * 2;
-	target += lefover;
-	mach_vm_deallocate(mach_task_self(), (target - lefover), lefover);
-#else
-	err = mach_vm_allocate(mach_task_self(), &target, image_size, VM_FLAGS_ANYWHERE);
-#endif
-
+	mach_vm_address_t target = 0;
+	err = _remap_image(image, image_slide, &target);
 	if (KERN_SUCCESS != err) {
-		fprintf(stderr, "ERROR: Failed allocating memory region for the copy. %d\n", err);
-    	return (err);
-	}
-
-	err = _remap_image();
-	if (KERN_SUCCESS != err) {
-		fprintf(stderr, "ERROR: Failed remapping segements into the target [0x%x]\n", err);
+		fprintf(stderr, "ERROR: Failed remapping segements of the image [0x%x]\n", err);
     	return (err);
 	}
 
@@ -101,18 +106,96 @@ int rd_route(void *function, void *replacement, void **original_ptr)
 	injection_history[injection_history_length].target_address = target;
 	++injection_history_length;
 
-	if (original_ptr) {
-		*original_ptr = (void *)(target + (function - image));
+	if (duplicate) {
+		*duplicate = (void *)(target + (function - image));
 	}
 
-	return _hard_hook_function(function, replacement);
+	return KERN_SUCCESS;
 }
 
 
-static mach_vm_size_t _get_image_size(void)
-{
-	const mach_header_t *header = (mach_header_t *)image;
 
+
+__attribute__((noinline))
+static kern_return_t _remap_image(void *image, mach_vm_size_t image_slide, mach_vm_address_t *new_location)
+{
+	if (image == NULL) {
+		return KERN_FAILURE;
+	}
+
+	mach_vm_size_t image_size = _get_image_size(image, image_slide);
+	kern_return_t err = KERN_FAILURE;
+	/**
+	 * For some reason we need more free space when for 64-bit code.
+	 * Looks like _remap_image() remaps a "__DATA" section BEFORE target — SO BUG.
+     *
+	 * FIX OR DIE.
+	 */
+	*new_location = 0;
+#if defined(__x86_64__)
+	err = mach_vm_allocate(mach_task_self(), new_location, image_size*3, VM_FLAGS_ANYWHERE);
+	mach_vm_size_t lefover = image_size * 2;
+	*new_location += lefover;
+	mach_vm_deallocate(mach_task_self(), (*new_location - lefover), lefover);
+#else
+	err = mach_vm_allocate(mach_task_self(), new_location, image_size, VM_FLAGS_ANYWHERE);
+#endif
+
+	if (KERN_SUCCESS != err) {
+		fprintf(stderr, "ERROR: Failed allocating memory region for the copy. %d\n", err);
+    	return (err);
+	}
+
+	const mach_header_t *header = (mach_header_t *)image;
+	struct load_command *cmd = (struct load_command *)(header + 1);
+
+	/**
+	 * Remap each segment of the mach-o image into a new location.
+	 * New location is:
+	 * -> target + segment.offset_in_image;
+	 */
+	for (uint32_t i = 0; (i < header->ncmds) && (NULL != cmd); i++) {
+		if (cmd->cmd == LC_SEGMENT_ARCH_INDEPENDENT) {
+			segment_command_t *segment = (segment_command_t *)cmd;
+			{
+				mach_vm_address_t vmaddr = segment->vmaddr;
+				mach_vm_size_t    vmsize = segment->vmsize;
+
+				if (vmsize == 0) {
+					continue;
+				}
+
+				mach_vm_address_t seg_source = vmaddr + image_slide;
+				mach_vm_address_t seg_target = (mach_vm_address_t)*new_location + (seg_source - (mach_vm_address_t)header);
+
+       			vm_prot_t cur_protection, max_protection;
+
+        		err = mach_vm_remap(mach_task_self(),
+                      &seg_target,
+                      vmsize,
+                      0x0,
+                      (VM_FLAGS_FIXED | VM_FLAGS_OVERWRITE),
+                      mach_task_self(),
+                      seg_source,
+                      false,
+                      &cur_protection,
+                      &max_protection,
+                      VM_INHERIT_SHARE);
+			}
+		}
+		cmd = (struct load_command *)((uintptr_t)cmd + cmd->cmdsize);
+	}
+
+	return (err);
+}
+
+
+static mach_vm_size_t _get_image_size(void *image, mach_vm_size_t image_slide)
+{
+	if (!image) {
+		return 0;
+	}
+	const mach_header_t *header = (mach_header_t *)image;
 	struct load_command *cmd = (struct load_command *)(header + 1);
 
 	mach_vm_address_t image_addr = (mach_vm_address_t)image - image_slide;
@@ -133,56 +216,6 @@ static mach_vm_size_t _get_image_size(void)
 	return (image_end - image_addr);
 }
 
-__attribute__((noinline))
-static kern_return_t _remap_image(void)
-{
-	const mach_header_t *header = (mach_header_t *)image;
-	struct load_command *cmd = (struct load_command *)(header + 1);
-	kern_return_t err = KERN_SUCCESS;
-
-	/**
-	 * Remap each segment of the mach-o image into a new location.
-	 * New location is:
-	 * -> target + segment.offset_in_image;
-	 */
-	for (uint32_t i = 0; (i < header->ncmds) && (NULL != cmd); i++) {
-		if (cmd->cmd == LC_SEGMENT_ARCH_INDEPENDENT) {
-			segment_command_t *segment = (segment_command_t *)cmd;
-			{
-				mach_vm_address_t vmaddr = segment->vmaddr;
-				mach_vm_size_t    vmsize = segment->vmsize;
-
-				if (vmsize == 0) {
-					continue;
-				}
-
-				mach_vm_address_t seg_source = vmaddr + image_slide;
-				mach_vm_address_t seg_target = (mach_vm_address_t)target + (seg_source - (mach_vm_address_t)header);
-
-       			vm_prot_t cur_protection, max_protection;
-
-        		err = mach_vm_remap(mach_task_self(),
-                      &seg_target,
-                      vmsize,
-                      0x0,
-                      (VM_FLAGS_FIXED | VM_FLAGS_OVERWRITE),
-                      mach_task_self(),
-                      seg_source,
-                      false,
-                      &cur_protection,
-                      &max_protection,
-                      VM_INHERIT_SHARE);
-
-        		// if (err != KERN_SUCCESS) {
-        		// 	fprintf(stderr, "ERROR: Failed remapping segement (#%d) into the target [0x%x]\n", i, err);
-        		// }
-			}
-		}
-		cmd = (struct load_command *)((uintptr_t)cmd + cmd->cmdsize);
-	}
-
-	return (err);
-}
 
 static kern_return_t
 	_hard_hook_function(void* function, void* replacement)
@@ -201,7 +234,7 @@ static kern_return_t
 	kern_return_t err = KERN_SUCCESS;
     err = mach_vm_protect(mach_task_self(),
     	(mach_vm_address_t)function,
-    	size_of_jump,
+    	size_of_jump*2,
     	false,
     	(VM_PROT_ALL | VM_PROT_COPY));
     if (KERN_SUCCESS != err) {

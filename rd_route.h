@@ -4,5 +4,10 @@
 // as published by Sam Hocevar. See the COPYING file for more details.
 
 
+#ifndef RD_ROUTE
+    #define RD_ROUTE
+    int rd_route(void *function, void *replacement, void **original);
+    int rd_duplicate_function(void *function, void **duplicate);
+#endif
 
-int rd_route(void *function, void *replacement, void **original);
+

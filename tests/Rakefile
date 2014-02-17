@@ -10,10 +10,10 @@ desc "Build tests for «rd_route» with clang(32|64) and gcc(32|64)"
 task :build do
 	# You can build with -DDEBUG to see tests' output
 	system("mkdir build") if (!File.exists?(Dir.getwd+"/src"))
-	system("clang -arch i386  -DDEBUG -framework Foundation -o build/clang_i386 *.m ../*.m")
-	system("clang -arch x86_64  -framework Foundation -o build/clang_x86_64  *.m ../*.m")
-	system("gcc -arch i386  -framework Foundation -std=c99 -o build/gcc_i386 *.m ../*.m")
-	system("gcc -arch x86_64  -framework Foundation -std=c99 -o build/gcc_x86_64 *.m ../*.m")
+	system("clang -arch i386  -DDEBUG -framework Foundation -o build/clang_i386 *.m ../*.c")
+	system("clang -arch x86_64  -framework Foundation -o build/clang_x86_64  *.m ../*.c")
+	system("gcc -arch i386  -framework Foundation -std=c99 -o build/gcc_i386 *.m ../*.c")
+	system("gcc -arch x86_64  -framework Foundation -std=c99 -o build/gcc_x86_64 *.m ../*.c")
 
 end
 
