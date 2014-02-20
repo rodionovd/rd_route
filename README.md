@@ -88,7 +88,7 @@ static uint64_t  very_important_function(uint64_t code)
 . . .
 
 void *(*VIF_copy)(uint64_t) = NULL;
-int code = 0xDEADBEAF;
+uint64_t code = 0xDEADBEAF;
 /*
  * We don't want to lose our VIF at any point so backup it. 
  */
