@@ -1,7 +1,9 @@
 > Do not use this code. It can destroy everthing.  
 > But if you do, I wish you a luck.
 
-`rd_route` is a tiny library for runtime replacing an implementation of *(quite)* any C function (keeping the original imp if you'd like to) in **OS X**'s Mach-O executables.
+`rd_route` a tiny library for runtime replacing implementations of C functions in Mach-O executables.  
+I've created this library because [`mach_override`](https://github.com/rentzsch/mach_override) is  dramatically **assembly-dependent** which means that you have to either use runtime decompiler with it, or hardcode every(?) known opcodes to properly patch a function's prologue. It's *a lot of fking work*, so I just leave it.  
+And let's be honest, `mach_override`'s code is quite old and ugly (IMO), but it rocks anyway.
 
 The source code is based on Landon Fuller's (@landonf) gorgeous [`libevil`](https://github.com/landonf/libevil_patch) library.
 
