@@ -34,6 +34,7 @@ static uint16_t       injection_history_length = 0;
 static mach_vm_size_t _get_image_size(void *image, mach_vm_size_t image_slide);
 static kern_return_t  _remap_image(void *image,  mach_vm_size_t image_slide, mach_vm_address_t *new_location);
 static kern_return_t  _hard_hook_function(void* function, void* replacement);
+static kern_return_t  _patch_memory(void *address, mach_vm_size_t count, uint8_t *new_bytes);
 
 
 int rd_route(void *function, void *replacement, void **original_ptr)
@@ -226,35 +227,48 @@ static kern_return_t
 	 * and a relative one for i386.
 	 */
 #if defined (__x86_64__)
-	size_t size_of_jump = (sizeof(uintptr_t) * 2);
+	mach_vm_size_t size_of_jump = (sizeof(uintptr_t) * 2);
 #else
-	size_t size_of_jump = (sizeof(int) + 1);
+	mach_vm_size_t size_of_jump = (sizeof(int) + 1);
 #endif
 
 	kern_return_t err = KERN_SUCCESS;
-    err = mach_vm_protect(mach_task_self(),
-    	(mach_vm_address_t)function,
-    	size_of_jump*2,
-    	false,
-    	(VM_PROT_ALL | VM_PROT_COPY));
-    if (KERN_SUCCESS != err) {
-    	fprintf(stderr, "ERROR: Failed while vm_protect'ing original implementation\n");
-    	return (err);
-    }
-
-	unsigned char opcodes[size_of_jump];
+	uint8_t opcodes[size_of_jump];
 #if defined(__x86_64__)
 	opcodes[0] = 0xFF;
 	opcodes[1] = 0x25;
 	*((int*)&opcodes[2]) = 0;
 	*((uintptr_t*)&opcodes[6]) = (uintptr_t)replacement;
-	memcpy((void*)function, opcodes, size_of_jump);
+	err = _patch_memory((void *)function, size_of_jump, opcodes);
 #else
 	int offset = (int)(replacement - function - size_of_jump);
 	opcodes[0] = 0xE9;
 	*((int*)&opcodes[1]) = offset;
-	memcpy((void*)function, opcodes, size_of_jump);
+	err = _patch_memory((void *)function, size_of_jump, opcodes);
 #endif
 
-	return KERN_SUCCESS;
+	return (err);
+}
+
+static kern_return_t _patch_memory(void *address, mach_vm_size_t count, uint8_t *new_bytes)
+{
+	if (count == 0) {
+		return KERN_SUCCESS;
+	}
+	if (!address || !new_bytes) {
+		return KERN_INVALID_ARGUMENT;
+	}
+	kern_return_t kr = 0;
+    
+	kr = mach_vm_protect(mach_task_self(), (mach_vm_address_t)address, (mach_vm_size_t)count, FALSE, VM_PROT_READ | VM_PROT_WRITE | VM_PROT_EXECUTE | VM_PROT_COPY);
+	if (kr != KERN_SUCCESS) {
+		return (kr);
+	}
+	kr = mach_vm_write(mach_task_self(), (mach_vm_address_t)address, (vm_offset_t)new_bytes, count);
+	if (kr != KERN_SUCCESS) {
+		return (kr);
+	}
+	kr = mach_vm_protect(mach_task_self(), (mach_vm_address_t)address, (mach_vm_size_t)count, FALSE, VM_PROT_READ | VM_PROT_EXECUTE);
+    
+	return (kr);
 }
