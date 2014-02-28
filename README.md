@@ -2,7 +2,7 @@
 > But if you do, I wish you a luck.
 
 `rd_route` a tiny library for runtime replacing implementations of C functions in Mach-O executables.  
-I've created this library because [`mach_override`](https://github.com/rentzsch/mach_override) is  dramatically **assembly-dependent** which means that you have to either use runtime decompiler with it, or hardcode every(?) known opcodes to properly patch a function's prologue. It's *a lot of fking work*, so I just leave it.  
+I've created this library because [`mach_override`](https://github.com/rentzsch/mach_override) is  dramatically **assembly-dependent** which means that you have to either [use some disassembler library](https://github.com/rentzsch/mach_override/commit/9261b8efc94b87c5c7ad906759179ecf127d01e6) with it, or hardcode every(?) known opcodes to properly patch a function's prologue. It's *a lot of fking work*, so I just leave it.  
 And let's be honest, `mach_override`'s code is quite old and ugly (IMO), but it rocks anyway.
 
 The source code is based on Landon Fuller's (@landonf) gorgeous [`libevil`](https://github.com/landonf/libevil_patch) library.
