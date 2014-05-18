@@ -2,7 +2,7 @@
 // This work is free. You can redistribute it and/or modify it
 // under the terms of the Do What The Fuck You Want To Public License, Version 2,
 // as published by Sam Hocevar. See the COPYING file for more details.
-
+#import <stdlib.h>         // realloc()
 #import <stdio.h>          // fprintf()
 #import <dlfcn.h>          // dladdr()
 #import <mach/mach_vm.h>   // mach_vm_*
@@ -25,11 +25,6 @@ typedef struct rd_injection {
 	mach_vm_address_t injected_mach_header;
 	mach_vm_address_t target_address;
 } rd_injection_t;
-
-#define kRDInjectionHistoryCapacity 10
-static rd_injection_t injection_history[kRDInjectionHistoryCapacity] = {{0}};
-static uint16_t       injection_history_length = 0;
-
 
 static mach_vm_size_t _get_image_size(void *image, mach_vm_size_t image_slide);
 static kern_return_t  _remap_image(void *image,  mach_vm_size_t image_slide, mach_vm_address_t *new_location);
@@ -82,8 +77,10 @@ int rd_duplicate_function(void *function, void **duplicate)
 		}
 	}
 
+    static rd_injection_t *injection_history = NULL;
+    static uint16_t history_size = 0;
 	/* Look up the injection history if we already have this image remapped. */
-	for (uint16_t i = 0; i < injection_history_length; i++) {
+	for (uint16_t i = 0; i < history_size; i++) {
 		if (injection_history[i].injected_mach_header == (mach_vm_address_t)image) {
 			if (duplicate) {
 				*duplicate = (void *)injection_history[i].target_address + (function - image);
@@ -92,24 +89,29 @@ int rd_duplicate_function(void *function, void **duplicate)
 		}
 	}
 
-	mach_vm_address_t target = 0;
-	err = _remap_image(image, image_slide, &target);
-	if (KERN_SUCCESS != err) {
-		fprintf(stderr, "ERROR: Failed remapping segements of the image [0x%x]\n", err);
-    	return (err);
-	}
+    /**
+     * Take a note that we have already remapped this mach-o image, so won't do this
+     * again when routing another function from the image.
+     */
+    size_t new_size = history_size + 1;
+    injection_history = realloc(injection_history, sizeof(*injection_history) * new_size);
+    injection_history[history_size].injected_mach_header = (mach_vm_address_t)image;
+    injection_history[history_size].target_address = ({
+        mach_vm_address_t target = 0;
+        err = _remap_image(image, image_slide, &target);
+        if (KERN_SUCCESS != err) {
+            fprintf(stderr, "ERROR: Failed remapping segements of the image [0x%x]\n", err);
+            return (err);
+        }
+        /* Backup an original function implementation if needed */
+        if (duplicate) {
+            *duplicate = (void *)(target + (function - image));
+        }
 
-	/**
-	 * Take a note that we have already remapped this mach-o image, so won't do this
-	 * again when routing another function from the image.
-	 */
-	injection_history[injection_history_length].injected_mach_header = (mach_vm_address_t)image;
-	injection_history[injection_history_length].target_address = target;
-	++injection_history_length;
+        target;
+    });
 
-	if (duplicate) {
-		*duplicate = (void *)(target + (function - image));
-	}
+    history_size = new_size;
 
 	return KERN_SUCCESS;
 }
