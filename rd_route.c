@@ -261,7 +261,7 @@ static kern_return_t _patch_memory(void *address, mach_vm_size_t count, uint8_t 
 		return KERN_INVALID_ARGUMENT;
 	}
 	kern_return_t kr = 0;
-    
+
 	kr = mach_vm_protect(mach_task_self(), (mach_vm_address_t)address, (mach_vm_size_t)count, FALSE, VM_PROT_READ | VM_PROT_WRITE | VM_PROT_EXECUTE | VM_PROT_COPY);
 	if (kr != KERN_SUCCESS) {
 		return (kr);
@@ -271,6 +271,6 @@ static kern_return_t _patch_memory(void *address, mach_vm_size_t count, uint8_t 
 		return (kr);
 	}
 	kr = mach_vm_protect(mach_task_self(), (mach_vm_address_t)address, (mach_vm_size_t)count, FALSE, VM_PROT_READ | VM_PROT_EXECUTE);
-    
+
 	return (kr);
 }
