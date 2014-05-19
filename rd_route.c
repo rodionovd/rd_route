@@ -169,7 +169,7 @@ static kern_return_t _remap_image(void *image, mach_vm_size_t image_slide, mach_
 				}
 
 				mach_vm_address_t seg_source = vmaddr + image_slide;
-				mach_vm_address_t seg_target = (mach_vm_address_t)*new_location + (seg_source - (mach_vm_address_t)header);
+				mach_vm_address_t seg_target = *new_location + (seg_source - (mach_vm_address_t)header);
 
        			vm_prot_t cur_protection, max_protection;
 
