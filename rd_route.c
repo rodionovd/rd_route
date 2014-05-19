@@ -117,8 +117,6 @@ int rd_duplicate_function(void *function, void **duplicate)
 }
 
 
-
-
 __attribute__((noinline))
 static kern_return_t _remap_image(void *image, mach_vm_size_t image_slide, mach_vm_address_t *new_location)
 {
@@ -222,7 +220,6 @@ static mach_vm_size_t _get_image_size(void *image, mach_vm_size_t image_slide)
 
 static kern_return_t _insert_jmp(void* where, void* to)
 {
-
 	/**
 	 * We are going to use an absolute JMP instruction for x86_64
 	 * and a relative one for i386.
@@ -250,6 +247,7 @@ static kern_return_t _insert_jmp(void* where, void* to)
 
 	return (err);
 }
+
 
 static kern_return_t _patch_memory(void *address, mach_vm_size_t count, uint8_t *new_bytes)
 {
