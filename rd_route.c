@@ -263,13 +263,18 @@ static kern_return_t _patch_memory(void *address, mach_vm_size_t count, uint8_t 
 
 	kr = mach_vm_protect(mach_task_self(), (mach_vm_address_t)address, (mach_vm_size_t)count, FALSE, VM_PROT_READ | VM_PROT_WRITE | VM_PROT_EXECUTE | VM_PROT_COPY);
 	if (kr != KERN_SUCCESS) {
+		fprintf(stderr, "ERROR: mach_vm_protect() failed with error: %d [Line %d]\n", kr, __LINE__);
 		return (kr);
 	}
 	kr = mach_vm_write(mach_task_self(), (mach_vm_address_t)address, (vm_offset_t)new_bytes, count);
 	if (kr != KERN_SUCCESS) {
+		fprintf(stderr, "ERROR: mach_vm_write() failed with error: %d [Line %d]\n", kr, __LINE__);
 		return (kr);
 	}
 	kr = mach_vm_protect(mach_task_self(), (mach_vm_address_t)address, (mach_vm_size_t)count, FALSE, VM_PROT_READ | VM_PROT_EXECUTE);
+	if (kr != KERN_SUCCESS) {
+		fprintf(stderr, "ERROR: mach_vm_protect() failed with error: %d [Line %d]\n", kr, __LINE__);
+	}
 
 	return (kr);
 }
