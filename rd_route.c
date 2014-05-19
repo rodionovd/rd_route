@@ -34,6 +34,13 @@ static kern_return_t  _patch_memory(void *address, mach_vm_size_t count, uint8_t
 
 int rd_route(void *function, void *replacement, void **original_ptr)
 {
+	if (!function || !replacement) {
+		return KERN_INVALID_ARGUMENT;
+	}
+	if (function == replacement) {
+		return KERN_INVALID_ADDRESS;
+	}
+
 	int ret = rd_duplicate_function(function, original_ptr);
 	if (ret == KERN_SUCCESS) {
 		ret =  _insert_jmp(function, replacement);
@@ -51,7 +58,7 @@ int rd_duplicate_function(void *function, void **duplicate)
 		return (err);
 	}
 	if (!duplicate) {
-		/* Copy to nowhere == not to copy */
+		/* No-op */
 		return KERN_SUCCESS;
 	}
 
