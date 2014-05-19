@@ -28,7 +28,7 @@ typedef struct rd_injection {
 
 static mach_vm_size_t _get_image_size(void *image, mach_vm_size_t image_slide);
 static kern_return_t  _remap_image(void *image,  mach_vm_size_t image_slide, mach_vm_address_t *new_location);
-static kern_return_t  _hard_hook_function(void* function, void* replacement);
+static kern_return_t  _insert_jmp(void* where, void* to);
 static kern_return_t  _patch_memory(void *address, mach_vm_size_t count, uint8_t *new_bytes);
 
 
@@ -36,7 +36,7 @@ int rd_route(void *function, void *replacement, void **original_ptr)
 {
 	int ret = rd_duplicate_function(function, original_ptr);
 	if (ret == KERN_SUCCESS) {
-		ret =  _hard_hook_function(function, replacement);
+		ret =  _insert_jmp(function, replacement);
 	}
 
 	return (ret);
@@ -220,8 +220,7 @@ static mach_vm_size_t _get_image_size(void *image, mach_vm_size_t image_slide)
 }
 
 
-static kern_return_t
-	_hard_hook_function(void* function, void* replacement)
+static kern_return_t _insert_jmp(void* where, void* to)
 {
 
 	/**
@@ -240,13 +239,13 @@ static kern_return_t
 	opcodes[0] = 0xFF;
 	opcodes[1] = 0x25;
 	*((int*)&opcodes[2]) = 0;
-	*((uintptr_t*)&opcodes[6]) = (uintptr_t)replacement;
-	err = _patch_memory((void *)function, size_of_jump, opcodes);
+	*((uintptr_t*)&opcodes[6]) = (uintptr_t)to;
+	err = _patch_memory((void *)where, size_of_jump, opcodes);
 #else
-	int offset = (int)(replacement - function - size_of_jump);
+	int offset = (int)(to - where - size_of_jump);
 	opcodes[0] = 0xE9;
 	*((int*)&opcodes[1]) = offset;
-	err = _patch_memory((void *)function, size_of_jump, opcodes);
+	err = _patch_memory((void *)where, size_of_jump, opcodes);
 #endif
 
 	return (err);
