@@ -5,7 +5,7 @@
 
 
 #ifndef RD_ROUTE
-    #define RD_ROUTE
+	#define RD_ROUTE
 
 /**
  * Override `function` to jump directly into `replacement` location. Caller can later
@@ -19,7 +19,7 @@
  *
  * @return             KERN_SUCCESS if succeeded, or other value if failed
  */
-    int rd_route(void *function, void *replacement, void **original);
+	int rd_route(void *function, void *replacement, void **original);
 /**
  * Copy `function` implementation into another (first available) memory region.
  * @param  function  pointer to a function to override;
@@ -27,7 +27,7 @@
  *
  * @return KERN_SUCCESS if succeeded, or other value if failed
  */
-    int rd_duplicate_function(void *function, void **duplicate);
+	int rd_duplicate_function(void *function, void **duplicate);
 #endif
 
 

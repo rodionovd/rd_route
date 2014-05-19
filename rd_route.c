@@ -77,8 +77,8 @@ int rd_duplicate_function(void *function, void **duplicate)
 		}
 	}
 
-    static rd_injection_t *injection_history = NULL;
-    static uint16_t history_size = 0;
+	static rd_injection_t *injection_history = NULL;
+	static uint16_t history_size = 0;
 	/* Look up the injection history if we already have this image remapped. */
 	for (uint16_t i = 0; i < history_size; i++) {
 		if (injection_history[i].injected_mach_header == (mach_vm_address_t)image) {
@@ -89,29 +89,29 @@ int rd_duplicate_function(void *function, void **duplicate)
 		}
 	}
 
-    /**
-     * Take a note that we have already remapped this mach-o image, so won't do this
-     * again when routing another function from the image.
-     */
-    size_t new_size = history_size + 1;
-    injection_history = realloc(injection_history, sizeof(*injection_history) * new_size);
-    injection_history[history_size].injected_mach_header = (mach_vm_address_t)image;
-    injection_history[history_size].target_address = ({
-        mach_vm_address_t target = 0;
-        err = _remap_image(image, image_slide, &target);
-        if (KERN_SUCCESS != err) {
-            fprintf(stderr, "ERROR: Failed remapping segements of the image [0x%x]\n", err);
-            return (err);
-        }
-        /* Backup an original function implementation if needed */
-        if (duplicate) {
-            *duplicate = (void *)(target + (function - image));
-        }
+	/**
+	 * Take a note that we have already remapped this mach-o image, so won't do this
+	 * again when routing another function from the image.
+	 */
+	size_t new_size = history_size + 1;
+	injection_history = realloc(injection_history, sizeof(*injection_history) * new_size);
+	injection_history[history_size].injected_mach_header = (mach_vm_address_t)image;
+	injection_history[history_size].target_address = ({
+		mach_vm_address_t target = 0;
+		err = _remap_image(image, image_slide, &target);
+		if (KERN_SUCCESS != err) {
+			fprintf(stderr, "ERROR: Failed remapping segements of the image [0x%x]\n", err);
+			return (err);
+		}
+		/* Backup an original function implementation if needed */
+		if (duplicate) {
+			*duplicate = (void *)(target + (function - image));
+		}
 
-        target;
-    });
+		target;
+	});
 
-    history_size = new_size;
+	history_size = new_size;
 
 	return KERN_SUCCESS;
 }
@@ -131,7 +131,7 @@ static kern_return_t _remap_image(void *image, mach_vm_size_t image_slide, mach_
 	/**
 	 * For some reason we need more free space when for 64-bit code.
 	 * Looks like _remap_image() remaps a "__DATA" section BEFORE target — SO BUG.
-     *
+	 *
 	 * FIX OR DIE.
 	 */
 	*new_location = 0;
@@ -146,7 +146,7 @@ static kern_return_t _remap_image(void *image, mach_vm_size_t image_slide, mach_
 
 	if (KERN_SUCCESS != err) {
 		fprintf(stderr, "ERROR: Failed allocating memory region for the copy. %d\n", err);
-    	return (err);
+		return (err);
 	}
 
 	const mach_header_t *header = (mach_header_t *)image;
@@ -171,19 +171,19 @@ static kern_return_t _remap_image(void *image, mach_vm_size_t image_slide, mach_
 				mach_vm_address_t seg_source = vmaddr + image_slide;
 				mach_vm_address_t seg_target = *new_location + (seg_source - (mach_vm_address_t)header);
 
-       			vm_prot_t cur_protection, max_protection;
+				vm_prot_t cur_protection, max_protection;
 
-        		err = mach_vm_remap(mach_task_self(),
-                      &seg_target,
-                      vmsize,
-                      0x0,
-                      (VM_FLAGS_FIXED | VM_FLAGS_OVERWRITE),
-                      mach_task_self(),
-                      seg_source,
-                      false,
-                      &cur_protection,
-                      &max_protection,
-                      VM_INHERIT_SHARE);
+				err = mach_vm_remap(mach_task_self(),
+					  &seg_target,
+					  vmsize,
+					  0x0,
+					  (VM_FLAGS_FIXED | VM_FLAGS_OVERWRITE),
+					  mach_task_self(),
+					  seg_source,
+					  false,
+					  &cur_protection,
+					  &max_protection,
+					  VM_INHERIT_SHARE);
 			}
 		}
 		cmd = (struct load_command *)((uintptr_t)cmd + cmd->cmdsize);
