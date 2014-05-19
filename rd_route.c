@@ -120,7 +120,7 @@ int rd_duplicate_function(void *function, void **duplicate)
 __attribute__((noinline))
 static kern_return_t _remap_image(void *image, mach_vm_size_t image_slide, mach_vm_address_t *new_location)
 {
-	if (image == NULL) {
+	if (image == NULL || new_location == NULL) {
 		return KERN_FAILURE;
 	}
 
