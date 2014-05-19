@@ -1,6 +1,5 @@
 #import <Foundation/Foundation.h>
-
-extern int rd_route(void *function, void *replacement, void **original);
+#import "../rd_route.h"
 
 #if !defined(DEBUG)
 	#define fprintf(file, format, ...)
