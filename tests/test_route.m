@@ -26,6 +26,23 @@ static int NSA_computation(int first, int second)
 
 int main(int argc, char const *argv[])
 {
+	void *(*escape_island)(void) = NULL;
+	assert(KERN_SUCCESS != rd_route(NULL, NULL, NULL));
+	assert(KERN_SUCCESS != rd_route(NULL, NULL, (void **)&escape_island));
+	assert(NULL == escape_island);
+
+	assert(KERN_SUCCESS != rd_route(NULL, my_strerror, NULL));
+	assert(KERN_SUCCESS != rd_route(NULL, my_strerror, (void **)&escape_island));
+	assert(NULL == escape_island);
+
+	assert(KERN_SUCCESS != rd_route(my_strerror, NULL, NULL));
+	assert(KERN_SUCCESS != rd_route(my_strerror, NULL, (void **)&escape_island));
+	assert(NULL == escape_island);
+
+	assert(KERN_SUCCESS != rd_route(my_strerror, my_strerror, NULL));
+	assert(KERN_SUCCESS != rd_route(my_strerror, my_strerror, (void **)&escape_island));
+	assert(NULL == escape_island);
+
 	char* (*orig_strerror)(int) = NULL;
 	int err = 2;
 	char *expected_string = strerror(err);
