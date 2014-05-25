@@ -3,10 +3,12 @@
 // under the terms of the Do What The Fuck You Want To Public License, Version 2,
 // as published by Sam Hocevar. See the COPYING file for more details.
 #import <stdlib.h>         // realloc()
+#import <libgen.h>         // basename()
 #import <stdio.h>          // fprintf()
 #import <dlfcn.h>          // dladdr()
 #import <mach/mach_vm.h>   // mach_vm_*
 #import <mach-o/dyld.h>    // _dyld_*
+#import <mach-o/nlist.h>   // nlist/nlist_64
 #import <mach/mach_init.h> // mach_task_self()
 #import "rd_route.h"
 
@@ -15,10 +17,12 @@
 	typedef struct mach_header_64     mach_header_t;
 	typedef struct segment_command_64 segment_command_t;
 	#define LC_SEGMENT_ARCH_INDEPENDENT   LC_SEGMENT_64
+	typedef struct nlist_64 nlist_t;
 #else
 	typedef struct mach_header        mach_header_t;
 	typedef struct segment_command    segment_command_t;
 	#define LC_SEGMENT_ARCH_INDEPENDENT   LC_SEGMENT
+	typedef struct nlist nlist_t;
 #endif
 
 typedef struct rd_injection {
@@ -30,7 +34,8 @@ static mach_vm_size_t _get_image_size(void *image, mach_vm_size_t image_slide);
 static kern_return_t  _remap_image(void *image,  mach_vm_size_t image_slide, mach_vm_address_t *new_location);
 static kern_return_t  _insert_jmp(void* where, void* to);
 static kern_return_t  _patch_memory(void *address, mach_vm_size_t count, uint8_t *new_bytes);
-
+static void*          _function_ptr_from_name(const char *function_name, const char *suggested_image_name);
+static void*          _function_ptr_within_image(const char *function_name, void *macho_image_header, uintptr_t vm_image_slide);
 
 int rd_route(void *function, void *replacement, void **original_ptr)
 {
@@ -49,6 +54,19 @@ int rd_route(void *function, void *replacement, void **original_ptr)
 	return (ret);
 }
 
+int rd_route_byname(const char *function_name, const char *suggested_image_name, void *replacement, void **original)
+{
+	/**
+	 * These cases are actually handled by rd_route() function itself, but we don't want to dig over
+	 * all loaded images just to do nothing at the end.
+	 */
+	if (!function_name|| !replacement) {
+		return KERN_INVALID_ARGUMENT;
+	}
+	void *function = _function_ptr_from_name(function_name, suggested_image_name);
+
+	return rd_route(function, replacement, original);
+}
 
 int rd_duplicate_function(void *function, void **duplicate)
 {
@@ -282,4 +300,90 @@ static kern_return_t _patch_memory(void *address, mach_vm_size_t count, uint8_t 
 	}
 
 	return (kr);
+}
+
+static void* _function_ptr_from_name(const char *function_name, const char *suggested_image_name)
+{
+	for (uint32_t i = 0; i < _dyld_image_count(); i++) {
+		void *header = (void *)_dyld_get_image_header(i);
+		uintptr_t vmaddr_slide = _dyld_get_image_vmaddr_slide(i);
+
+		if (!suggested_image_name) {
+			void *ptr = _function_ptr_within_image(function_name, header, vmaddr_slide);
+			if (ptr) return ptr;
+		} else {
+			int name_matches = 0;
+			name_matches |= !strcmp(suggested_image_name, _dyld_get_image_name(i));
+			name_matches |= !strcmp(suggested_image_name, basename((char *)_dyld_get_image_name(i)));
+			if (name_matches) {
+				return _function_ptr_within_image(function_name, header, vmaddr_slide);
+			}
+		}
+	}
+
+	return NULL;
+}
+
+static void* _function_ptr_within_image(const char *function_name, void *macho_image_header, uintptr_t vmaddr_slide)
+{
+	/**
+	 * Try the system NSLookup API to find out the function's pointer withing the specifed header.
+	 */
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated"
+	void *pointer_via_NSLookup = ({
+		NSSymbol symbol = NSLookupSymbolInImage(macho_image_header, function_name,
+			NSLOOKUPSYMBOLINIMAGE_OPTION_RETURN_ON_ERROR);
+		NSAddressOfSymbol(symbol);
+	});
+#pragma clang diagnostic pop
+	if (pointer_via_NSLookup) return pointer_via_NSLookup;
+
+	/**
+	 * So NSLookup() has failed and we have to parse a mach-o image to find the function's symbol
+	 * in a symbols list.
+	 */
+	const mach_header_t *header     = macho_image_header;
+	struct symtab_command *symtab   = NULL;
+	segment_command_t *seg_linkedit = NULL;
+	segment_command_t *seg_text     = NULL;
+	struct load_command *command    = (struct load_command *)(header+1);
+
+	for (uint32_t i = 0; i < header->ncmds; i++) {
+		switch(command->cmd) {
+			case LC_SEGMENT_ARCH_INDEPENDENT: {
+				if (0 == strcmp(SEG_TEXT, ((segment_command_t *)command)->segname)) {
+					seg_text = (segment_command_t *)command;
+				} else
+				if (0 == strcmp(SEG_LINKEDIT, ((segment_command_t *)command)->segname)) {
+					seg_linkedit = (segment_command_t *)command;
+				}
+				break;
+			}
+			case LC_SYMTAB: {
+				symtab = (struct symtab_command *)command;
+				break;
+			}
+			default: {}
+		}
+		// command += command->cmdsize;
+		command = (struct load_command *)((unsigned char *)command + command->cmdsize);
+	}
+
+	if (!symtab || !seg_linkedit || !seg_text) {
+		return NULL;
+	}
+
+	uintptr_t file_slide = ((uintptr_t)seg_linkedit->vmaddr - (uintptr_t)seg_text->vmaddr) - seg_linkedit->fileoff;
+	uintptr_t strings = (uintptr_t)header + (symtab->stroff + file_slide);
+	nlist_t *sym = (nlist_t *)((uintptr_t)header + (symtab->symoff + file_slide));
+
+	for (uint32_t i = 0; i < symtab->nsyms; i++, sym++) {
+		if (!sym->n_value) continue;
+		if (0 == strcmp((const char *)strings + sym->n_un.n_strx + 1/*ignore leading "_" char */, function_name)) {
+			return (void *)(sym->n_value + vmaddr_slide);
+		}
+	}
+
+	return NULL;
 }
