@@ -2,6 +2,7 @@ class String
 	def red;   "\033[1;31m#{self}\033[0m" end
 	def green; "\033[1;32m#{self}\033[0m" end
 	def brown;  "\033[33m#{self}\033[0m" end
+	def nya;  "\033[35m#{self}\033[0m" end
 end
 
 task :default => [:build, :tests, :cleanup]
@@ -9,12 +10,22 @@ task :default => [:build, :tests, :cleanup]
 desc "Build tests for «rd_route» with clang(32|64) and gcc(32|64)"
 task :build do
 	# You can build with -DDEBUG to see tests' output
+	checker = 0
 	system("mkdir build") if (!File.exists?(Dir.getwd+"/build"))
+	puts "clang (i386)".nya
 	system("clang -arch i386  -DDEBUG -framework Foundation -o build/clang_i386 *.m ../*.c")
+	checker += 1 if $?.exitstatus != 0
+	puts "clang (x86_64)".nya
 	system("clang -arch x86_64  -framework Foundation -o build/clang_x86_64  *.m ../*.c")
+	checker += 1 if $?.exitstatus != 0
+	puts "gcc (i386)".nya
 	system("gcc -arch i386  -framework Foundation -std=c99 -o build/gcc_i386 *.m ../*.c")
+	checker += 1 if $?.exitstatus != 0
+	puts "gcc (x86_64)".nya
 	system("gcc -arch x86_64  -framework Foundation -std=c99 -o build/gcc_x86_64 *.m ../*.c")
+	checker += 1 if $?.exitstatus != 0
 
+	system("clear") if checker == 0
 end
 
 task :tests do
