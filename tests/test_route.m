@@ -187,4 +187,10 @@ static void test_rd_route_byname(void)
 static void test_rd_duplicate_function(void)
 {
 	fprintf(stderr, "RUN test [%s]\n", __FUNCTION__);
+
+	kern_return_t err = KERN_FAILURE;
+	int (*dup_byeworld)(const char *) = NULL;
+	err = rd_duplicate_function(byeworld, (void **)&dup_byeworld);
+	assert(KERN_SUCCESS == err);
+	assert(byeworld("test") == dup_byeworld("test"));
 }
