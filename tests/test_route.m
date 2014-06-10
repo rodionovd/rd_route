@@ -193,4 +193,12 @@ static void test_rd_duplicate_function(void)
 	err = rd_duplicate_function(byeworld, (void **)&dup_byeworld);
 	assert(KERN_SUCCESS == err);
 	assert(byeworld("test") == dup_byeworld("test"));
+
+	err = KERN_SUCCESS;
+	err = rd_duplicate_function(byeworld, NULL);
+	assert(KERN_INVALID_ARGUMENT == err);
+
+	err = KERN_SUCCESS;
+	err = rd_duplicate_function(NULL, (void **)&dup_byeworld);
+	assert(KERN_INVALID_ARGUMENT == err);
 }
