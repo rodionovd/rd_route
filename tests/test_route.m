@@ -178,6 +178,10 @@ static void test_rd_route_byname(void)
 		orig_CFBundleGetPlugIn, NULL);
 	assert(KERN_SUCCESS == err);
 
+	err = KERN_FAILURE;
+	err = rd_route_byname("_CFBundleGetPlugIn", "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation",
+		RDBundleGetPlugIn, NULL);
+	assert(KERN_SUCCESS == err);
 }
 
 static void test_rd_duplicate_function(void)
