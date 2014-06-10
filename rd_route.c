@@ -313,8 +313,9 @@ static void* _function_ptr_from_name(const char *function_name, const char *sugg
 			if (ptr) return ptr;
 		} else {
 			int name_matches = 0;
-			name_matches |= !strcmp(suggested_image_name, _dyld_get_image_name(i));
-			name_matches |= !strcmp(suggested_image_name, basename((char *)_dyld_get_image_name(i)));
+			const char *image_name = _dyld_get_image_name(i);
+			name_matches |= !strcmp(suggested_image_name, image_name);
+			name_matches |= !strcmp(suggested_image_name, basename((char *)image_name));
 			if (name_matches) {
 				return _function_ptr_within_image(function_name, header, vmaddr_slide);
 			}
