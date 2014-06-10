@@ -45,9 +45,13 @@ int rd_route(void *function, void *replacement, void **original_ptr)
 		return KERN_INVALID_ADDRESS;
 	}
 
-	int ret = rd_duplicate_function(function, original_ptr);
+	int ret = KERN_SUCCESS;
+	if (original_ptr) {
+		ret = rd_duplicate_function(function, original_ptr);
+	}
+
 	if (ret == KERN_SUCCESS) {
-		ret =  _insert_jmp(function, replacement);
+		ret = _insert_jmp(function, replacement);
 	}
 
 	return (ret);
@@ -69,14 +73,13 @@ int rd_route_byname(const char *function_name, const char *suggested_image_name,
 
 int rd_duplicate_function(void *function, void **duplicate)
 {
-	kern_return_t err = KERN_FAILURE;
+	kern_return_t err = KERN_INVALID_ARGUMENT;
 
 	if (!function) {
 		return (err);
 	}
 	if (!duplicate) {
-		/* No-op */
-		return KERN_SUCCESS;
+		return (err);
 	}
 
 	void *image = NULL;
