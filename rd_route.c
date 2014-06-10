@@ -12,7 +12,6 @@
 #import <mach/mach_init.h> // mach_task_self()
 #import "rd_route.h"
 
-
 #if defined(__x86_64__)
 	typedef struct mach_header_64     mach_header_t;
 	typedef struct segment_command_64 segment_command_t;
@@ -93,7 +92,6 @@ int rd_duplicate_function(void *function, void **duplicate)
 		fprintf(stderr, "Could not found an appropriate image\n");
 		return KERN_FAILURE;
 	}
-
 
 	for (uint32_t i = 0; i < _dyld_image_count(); i++) {
 		if (image == _dyld_get_image_header(i)) {
@@ -221,12 +219,12 @@ static mach_vm_size_t _get_image_size(void *image, mach_vm_size_t image_slide)
 	if (!image) {
 		return 0;
 	}
+
 	const mach_header_t *header = (mach_header_t *)image;
 	struct load_command *cmd = (struct load_command *)(header + 1);
 
 	mach_vm_address_t image_addr = (mach_vm_address_t)image - image_slide;
 	mach_vm_address_t image_end = image_addr;
-
 
 	for (uint32_t i = 0; (i < header->ncmds) && (NULL != cmd); i++) {
 		if (cmd->cmd == LC_SEGMENT_ARCH_INDEPENDENT) {
@@ -282,8 +280,8 @@ static kern_return_t _patch_memory(void *address, mach_vm_size_t count, uint8_t 
 	if (!address || !new_bytes) {
 		return KERN_INVALID_ARGUMENT;
 	}
-	kern_return_t kr = 0;
 
+	kern_return_t kr = 0;
 	kr = mach_vm_protect(mach_task_self(), (mach_vm_address_t)address, (mach_vm_size_t)count, FALSE, VM_PROT_READ | VM_PROT_WRITE | VM_PROT_EXECUTE | VM_PROT_COPY);
 	if (kr != KERN_SUCCESS) {
 		fprintf(stderr, "ERROR: mach_vm_protect() failed with error: %d [Line %d]\n", kr, __LINE__);
@@ -367,7 +365,6 @@ static void* _function_ptr_within_image(const char *function_name, void *macho_i
 			}
 			default: {}
 		}
-		// command += command->cmdsize;
 		command = (struct load_command *)((unsigned char *)command + command->cmdsize);
 	}
 
