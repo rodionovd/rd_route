@@ -129,7 +129,7 @@ int rd_duplicate_function(void *function, void **duplicate)
 		mach_vm_address_t target = 0;
 		err = _remap_image(image, image_slide, &target);
 		if (KERN_SUCCESS != err) {
-			RDErrorLog("Failed to remap segements of the image$. See error messages above.");
+			RDErrorLog("Failed to remap segements of the image. See error messages above.");
 			return (err);
 		}
 		/* Backup an original function implementation if needed */
