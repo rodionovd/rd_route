@@ -93,7 +93,6 @@ int rd_duplicate_function(void *function, void **duplicate)
 	if (dladdr(function, &image_info)) {
 		image = image_info.dli_fbase;
 	}
-
 	if (!image) {
 		RDErrorLog("Could not found a loaded mach-o image containing the given function.");
 		return KERN_FAILURE;
@@ -182,39 +181,37 @@ static kern_return_t _remap_image(void *image, mach_vm_size_t image_slide, mach_
 	/**
 	 * Remap each segment of the mach-o image into a new location.
 	 * New location is:
-	 * -> target + segment.offset_in_image;
+	 * -> target_image + segment.offset_in_image;
 	 */
-	for (uint32_t i = 0; (i < header->ncmds) && (NULL != cmd); i++) {
-		if (cmd->cmd == LC_SEGMENT_ARCH_INDEPENDENT) {
-			segment_command_t *segment = (segment_command_t *)cmd;
-			{
-				mach_vm_address_t vmaddr = segment->vmaddr;
-				mach_vm_size_t    vmsize = segment->vmsize;
+	for (uint32_t i = 0; (i < header->ncmds); i++, cmd = (void *)cmd + cmd->cmdsize) {
+		if (cmd->cmd != LC_SEGMENT_ARCH_INDEPENDENT) continue;
 
-				if (vmsize == 0) {
-					continue;
-				}
+		segment_command_t *segment = (segment_command_t *)cmd;
+		mach_vm_address_t vmaddr = segment->vmaddr;
+		mach_vm_size_t    vmsize = segment->vmsize;
 
-				mach_vm_address_t seg_source = vmaddr + image_slide;
-				mach_vm_address_t seg_target = *new_location + (seg_source - (mach_vm_address_t)header);
+		if (vmsize == 0) continue;
 
-				vm_prot_t cur_protection, max_protection;
+		mach_vm_address_t seg_source = vmaddr + image_slide;
+		mach_vm_address_t seg_target = *new_location + (seg_source - (mach_vm_address_t)header);
 
-				err = mach_vm_remap(mach_task_self(),
-					  &seg_target,
-					  vmsize,
-					  0x0,
-					  (VM_FLAGS_FIXED | VM_FLAGS_OVERWRITE),
-					  mach_task_self(),
-					  seg_source,
-					  false,
-					  &cur_protection,
-					  &max_protection,
-					  VM_INHERIT_SHARE);
-			}
-		}
-		cmd = (struct load_command *)((uintptr_t)cmd + cmd->cmdsize);
+		vm_prot_t cur_protection, max_protection;
+
+		err = mach_vm_remap(
+			/* Target information */
+			mach_task_self(), &seg_target,vmsize, 0x0,
+			/* Flags */
+			(VM_FLAGS_FIXED | VM_FLAGS_OVERWRITE),
+			/* Source information */
+			mach_task_self(), seg_source,
+			/* Should we copy this region? (it will be directly mapped otherwise) */
+			false,
+			/* The initial protection for the new region */
+			&cur_protection, &max_protection,
+			/* The inheritance attribute */
+			VM_INHERIT_SHARE);
 	}
+
 	if (KERN_SUCCESS != err) {
 		RDErrorLog("Failed to remap the function implementation to the new address - mach_vm_remap() returned 0x%x\n", err);
 	}
@@ -235,15 +232,13 @@ static mach_vm_size_t _get_image_size(void *image, mach_vm_size_t image_slide)
 	mach_vm_address_t image_addr = (mach_vm_address_t)image - image_slide;
 	mach_vm_address_t image_end = image_addr;
 
-	for (uint32_t i = 0; (i < header->ncmds) && (NULL != cmd); i++) {
-		if (cmd->cmd == LC_SEGMENT_ARCH_INDEPENDENT) {
-			segment_command_t *segment = (segment_command_t *)cmd;
-			if ((segment->vmaddr + segment->vmsize) > image_end) {
+	for (uint32_t i = 0; (i < header->ncmds); i++, cmd = (void *)cmd + cmd->cmdsize) {
+		if (cmd->cmd != LC_SEGMENT_ARCH_INDEPENDENT) continue;
 
-				image_end = segment->vmaddr + segment->vmsize;
-			}
+		segment_command_t *segment = (segment_command_t *)cmd;
+		if ((segment->vmaddr + segment->vmsize) > image_end) {
+			image_end = segment->vmaddr + segment->vmsize;
 		}
-		cmd = (struct load_command *)((uintptr_t)cmd + cmd->cmdsize);
 	}
 
 	return (image_end - image_addr);
@@ -296,11 +291,13 @@ static kern_return_t _patch_memory(void *address, mach_vm_size_t count, uint8_t 
 		RDErrorLog("mach_vm_protect() failed with error: 0x%x", kr);
 		return (kr);
 	}
+
 	kr = mach_vm_write(mach_task_self(), (mach_vm_address_t)address, (vm_offset_t)new_bytes, count);
 	if (kr != KERN_SUCCESS) {
 		RDErrorLog("mach_vm_write() failed with error: 0x%x", kr);
 		return (kr);
 	}
+
 	kr = mach_vm_protect(mach_task_self(), (mach_vm_address_t)address, (mach_vm_size_t)count, FALSE, VM_PROT_READ | VM_PROT_EXECUTE);
 	if (kr != KERN_SUCCESS) {
 		RDErrorLog("mach_vm_protect() failed with error: 0x%x", kr);
@@ -328,8 +325,8 @@ static void* _function_ptr_from_name(const char *function_name, const char *sugg
 			}
 		}
 	}
-
 	RDErrorLog("Failed to find symbol `%s` in the current address space.", function_name);
+
 	return NULL;
 }
 
@@ -361,11 +358,12 @@ static void* _function_ptr_within_image(const char *function_name, void *macho_i
 	for (uint32_t i = 0; i < header->ncmds; i++) {
 		switch(command->cmd) {
 			case LC_SEGMENT_ARCH_INDEPENDENT: {
-				if (0 == strcmp(SEG_TEXT, ((segment_command_t *)command)->segname)) {
-					seg_text = (segment_command_t *)command;
+				segment_command_t *segment = (segment_command_t *)command;
+				if (0 == strcmp(SEG_TEXT, segment->segname)) {
+					seg_text = segment;
 				} else
-				if (0 == strcmp(SEG_LINKEDIT, ((segment_command_t *)command)->segname)) {
-					seg_linkedit = (segment_command_t *)command;
+				if (0 == strcmp(SEG_LINKEDIT, segment->segname)) {
+					seg_linkedit = segment;
 				}
 				break;
 			}
@@ -375,7 +373,7 @@ static void* _function_ptr_within_image(const char *function_name, void *macho_i
 			}
 			default: {}
 		}
-		command = (struct load_command *)((unsigned char *)command + command->cmdsize);
+		command = (void *)command + command->cmdsize;
 	}
 
 	if (!symtab || !seg_linkedit || !seg_text) {
