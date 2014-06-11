@@ -357,11 +357,12 @@ static void* _function_ptr_within_image(const char *function_name, void *macho_i
 	for (uint32_t i = 0; i < header->ncmds; i++) {
 		switch(command->cmd) {
 			case LC_SEGMENT_ARCH_INDEPENDENT: {
-				if (0 == strcmp(SEG_TEXT, ((segment_command_t *)command)->segname)) {
-					seg_text = (segment_command_t *)command;
+				segment_command_t *segment = (segment_command_t *)command;
+				if (0 == strcmp(SEG_TEXT, segment->segname)) {
+					seg_text = segment;
 				} else
-				if (0 == strcmp(SEG_LINKEDIT, ((segment_command_t *)command)->segname)) {
-					seg_linkedit = (segment_command_t *)command;
+				if (0 == strcmp(SEG_LINKEDIT, segment->segname)) {
+					seg_linkedit = segment;
 				}
 				break;
 			}
@@ -371,7 +372,7 @@ static void* _function_ptr_within_image(const char *function_name, void *macho_i
 			}
 			default: {}
 		}
-		command = (struct load_command *)((unsigned char *)command + command->cmdsize);
+		command = (void *)command + command->cmdsize;
 	}
 
 	if (!symtab || !seg_linkedit || !seg_text) {
