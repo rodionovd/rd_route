@@ -391,7 +391,7 @@ static void* _function_ptr_within_image(const char *function_name, void *macho_i
 		if (!sym->n_value) continue;
 		const char *symbol_name = (const char *)strings + sym->n_un.n_strx;
 		if (0 == strcmp(symbol_name, function_name) ||
-			/*ignore leading "_" char */
+			/* ignore leading "_" char */
 			0 == strcmp(symbol_name+1, function_name))
 		{
 			return (void *)(sym->n_value + vmaddr_slide);
