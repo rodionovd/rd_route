@@ -76,13 +76,8 @@ int rd_route_byname(const char *function_name, const char *suggested_image_name,
 
 int rd_duplicate_function(void *function, void **duplicate)
 {
-	kern_return_t err = KERN_INVALID_ARGUMENT;
-
-	if (!function) {
-		return (err);
-	}
-	if (!duplicate) {
-		return (err);
+	if (!function || !duplicate) {
+		return (KERN_INVALID_ARGUMENT);
 	}
 
 	void *image = NULL;
@@ -126,7 +121,7 @@ int rd_duplicate_function(void *function, void **duplicate)
 	injection_history[history_size].injected_mach_header = (mach_vm_address_t)image;
 	injection_history[history_size].target_address = ({
 		mach_vm_address_t target = 0;
-		err = _remap_image(image, image_slide, &target);
+		kern_return_t err = _remap_image(image, image_slide, &target);
 		if (KERN_SUCCESS != err) {
 			RDErrorLog("Failed to remap segements of the image. See error messages above.");
 			return (err);
@@ -148,10 +143,6 @@ int rd_duplicate_function(void *function, void **duplicate)
 __attribute__((noinline))
 static kern_return_t _remap_image(void *image, mach_vm_size_t image_slide, mach_vm_address_t *new_location)
 {
-	if (image == NULL || new_location == NULL) {
-		return KERN_FAILURE;
-	}
-
 	mach_vm_size_t image_size = _get_image_size(image, image_slide);
 	kern_return_t err = KERN_FAILURE;
 	/**
@@ -222,10 +213,6 @@ static kern_return_t _remap_image(void *image, mach_vm_size_t image_slide, mach_
 
 static mach_vm_size_t _get_image_size(void *image, mach_vm_size_t image_slide)
 {
-	if (!image) {
-		return 0;
-	}
-
 	const mach_header_t *header = (mach_header_t *)image;
 	struct load_command *cmd = (struct load_command *)(header + 1);
 
@@ -280,9 +267,6 @@ static kern_return_t _patch_memory(void *address, mach_vm_size_t count, uint8_t 
 {
 	if (count == 0) {
 		return KERN_SUCCESS;
-	}
-	if (!address || !new_bytes) {
-		return KERN_INVALID_ARGUMENT;
 	}
 
 	kern_return_t kr = 0;
