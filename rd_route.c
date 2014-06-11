@@ -12,6 +12,9 @@
 #import <mach/mach_init.h> // mach_task_self()
 #import "rd_route.h"
 
+#define RDErrorLog(format, ...) fprintf(stderr, "%s:%d:\n\terror: "format"\n", \
+	__FILE__, __LINE__, ##__VA_ARGS__)
+
 #if defined(__x86_64__)
 	typedef struct mach_header_64     mach_header_t;
 	typedef struct segment_command_64 segment_command_t;
@@ -92,7 +95,7 @@ int rd_duplicate_function(void *function, void **duplicate)
 	}
 
 	if (!image) {
-		fprintf(stderr, "Could not found an appropriate image\n");
+		RDErrorLog("Could not found a loaded mach-o image containing the given function.");
 		return KERN_FAILURE;
 	}
 
@@ -126,7 +129,7 @@ int rd_duplicate_function(void *function, void **duplicate)
 		mach_vm_address_t target = 0;
 		err = _remap_image(image, image_slide, &target);
 		if (KERN_SUCCESS != err) {
-			fprintf(stderr, "ERROR: Failed remapping segements of the image [0x%x]\n", err);
+			RDErrorLog("Failed to remap segements of the image. See error messages above.");
 			return (err);
 		}
 		/* Backup an original function implementation if needed */
@@ -169,7 +172,7 @@ static kern_return_t _remap_image(void *image, mach_vm_size_t image_slide, mach_
 #endif
 
 	if (KERN_SUCCESS != err) {
-		fprintf(stderr, "ERROR: Failed allocating memory region for the copy. %d\n", err);
+		RDErrorLog("Failed to allocate a memory region for the function copy - mach_vm_allocate() returned 0x%x\n", err);
 		return (err);
 	}
 
@@ -211,6 +214,9 @@ static kern_return_t _remap_image(void *image, mach_vm_size_t image_slide, mach_
 			}
 		}
 		cmd = (struct load_command *)((uintptr_t)cmd + cmd->cmdsize);
+	}
+	if (KERN_SUCCESS != err) {
+		RDErrorLog("Failed to remap the function implementation to the new address - mach_vm_remap() returned 0x%x\n", err);
 	}
 
 	return (err);
@@ -287,17 +293,17 @@ static kern_return_t _patch_memory(void *address, mach_vm_size_t count, uint8_t 
 	kern_return_t kr = 0;
 	kr = mach_vm_protect(mach_task_self(), (mach_vm_address_t)address, (mach_vm_size_t)count, FALSE, VM_PROT_READ | VM_PROT_WRITE | VM_PROT_EXECUTE | VM_PROT_COPY);
 	if (kr != KERN_SUCCESS) {
-		fprintf(stderr, "ERROR: mach_vm_protect() failed with error: %d [Line %d]\n", kr, __LINE__);
+		RDErrorLog("mach_vm_protect() failed with error: 0x%x", kr);
 		return (kr);
 	}
 	kr = mach_vm_write(mach_task_self(), (mach_vm_address_t)address, (vm_offset_t)new_bytes, count);
 	if (kr != KERN_SUCCESS) {
-		fprintf(stderr, "ERROR: mach_vm_write() failed with error: %d [Line %d]\n", kr, __LINE__);
+		RDErrorLog("mach_vm_write() failed with error: 0x%x", kr);
 		return (kr);
 	}
 	kr = mach_vm_protect(mach_task_self(), (mach_vm_address_t)address, (mach_vm_size_t)count, FALSE, VM_PROT_READ | VM_PROT_EXECUTE);
 	if (kr != KERN_SUCCESS) {
-		fprintf(stderr, "ERROR: mach_vm_protect() failed with error: %d [Line %d]\n", kr, __LINE__);
+		RDErrorLog("mach_vm_protect() failed with error: 0x%x", kr);
 	}
 
 	return (kr);
@@ -323,6 +329,7 @@ static void* _function_ptr_from_name(const char *function_name, const char *sugg
 		}
 	}
 
+	RDErrorLog("Failed to find symbol `%s` in the current address space.", function_name);
 	return NULL;
 }
 
@@ -372,6 +379,7 @@ static void* _function_ptr_within_image(const char *function_name, void *macho_i
 	}
 
 	if (!symtab || !seg_linkedit || !seg_text) {
+		RDErrorLog("The given Mach-O image header is missing some important sections.");
 		return NULL;
 	}
 
