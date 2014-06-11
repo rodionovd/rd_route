@@ -211,6 +211,7 @@ static kern_return_t _remap_image(void *image, mach_vm_size_t image_slide, mach_
 			/* The inheritance attribute */
 			VM_INHERIT_SHARE);
 	}
+
 	if (KERN_SUCCESS != err) {
 		RDErrorLog("Failed to remap the function implementation to the new address - mach_vm_remap() returned 0x%x\n", err);
 	}
