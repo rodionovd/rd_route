@@ -39,6 +39,7 @@ static kern_return_t  _patch_memory(void *address, mach_vm_size_t count, uint8_t
 static void*          _function_ptr_from_name(const char *function_name, const char *suggested_image_name);
 static void*          _function_ptr_within_image(const char *function_name, void *macho_image_header, uintptr_t vm_image_slide);
 
+
 int rd_route(void *function, void *replacement, void **original_ptr)
 {
 	if (!function || !replacement) {
@@ -60,6 +61,7 @@ int rd_route(void *function, void *replacement, void **original_ptr)
 	return (ret);
 }
 
+
 int rd_route_byname(const char *function_name, const char *suggested_image_name, void *replacement, void **original)
 {
 	/**
@@ -73,6 +75,7 @@ int rd_route_byname(const char *function_name, const char *suggested_image_name,
 
 	return rd_route(function, replacement, original);
 }
+
 
 int rd_duplicate_function(void *function, void **duplicate)
 {
@@ -140,7 +143,6 @@ int rd_duplicate_function(void *function, void **duplicate)
 }
 
 
-__attribute__((noinline))
 static kern_return_t _remap_image(void *image, mach_vm_size_t image_slide, mach_vm_address_t *new_location)
 {
 	mach_vm_size_t image_size = _get_image_size(image, image_slide);
@@ -313,6 +315,7 @@ static void* _function_ptr_from_name(const char *function_name, const char *sugg
 
 	return NULL;
 }
+
 
 static void* _function_ptr_within_image(const char *function_name, void *macho_image_header, uintptr_t vmaddr_slide)
 {
