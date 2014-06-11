@@ -93,7 +93,6 @@ int rd_duplicate_function(void *function, void **duplicate)
 	if (dladdr(function, &image_info)) {
 		image = image_info.dli_fbase;
 	}
-
 	if (!image) {
 		RDErrorLog("Could not found a loaded mach-o image containing the given function.");
 		return KERN_FAILURE;
@@ -291,11 +290,13 @@ static kern_return_t _patch_memory(void *address, mach_vm_size_t count, uint8_t 
 		RDErrorLog("mach_vm_protect() failed with error: 0x%x", kr);
 		return (kr);
 	}
+
 	kr = mach_vm_write(mach_task_self(), (mach_vm_address_t)address, (vm_offset_t)new_bytes, count);
 	if (kr != KERN_SUCCESS) {
 		RDErrorLog("mach_vm_write() failed with error: 0x%x", kr);
 		return (kr);
 	}
+
 	kr = mach_vm_protect(mach_task_self(), (mach_vm_address_t)address, (mach_vm_size_t)count, FALSE, VM_PROT_READ | VM_PROT_EXECUTE);
 	if (kr != KERN_SUCCESS) {
 		RDErrorLog("mach_vm_protect() failed with error: 0x%x", kr);
@@ -323,8 +324,8 @@ static void* _function_ptr_from_name(const char *function_name, const char *sugg
 			}
 		}
 	}
-
 	RDErrorLog("Failed to find symbol `%s` in the current address space.", function_name);
+
 	return NULL;
 }
 
