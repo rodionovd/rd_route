@@ -8,7 +8,7 @@
 #import <dlfcn.h>          // dladdr()
 
 #import "TargetConditionals.h"
-#if defined(__i386__) || defined(__X86_64__)
+#if defined(__i386__) || defined(__x86_64__)
     #if !(TARGET_IPHONE_SIMULATOR)
         #import <mach/mach_vm.h> // mach_vm_*
     #else
