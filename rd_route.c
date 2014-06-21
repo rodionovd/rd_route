@@ -6,7 +6,27 @@
 #import <libgen.h>         // basename()
 #import <stdio.h>          // fprintf()
 #import <dlfcn.h>          // dladdr()
-#import <mach/mach_vm.h>   // mach_vm_*
+
+#import "TargetConditionals.h"
+#if defined(__i386__) || defined(__X86_64__)
+    #if !(TARGET_IPHONE_SIMULATOR)
+        #import <mach/mach_vm.h> // mach_vm_*
+    #else
+        #import <mach/vm_map.h>  // vm_*
+        #define mach_vm_address_t vm_address_t
+        #define mach_vm_size_t vm_size_t
+        #define mach_vm_allocate vm_allocate
+        #define mach_vm_deallocate vm_deallocate
+        #define mach_vm_write vm_write
+        #define mach_vm_remap vm_remap
+        #define mach_vm_protect vm_protect
+        #define NSLookupSymbolInImage(...) NULL
+        #define NSAddressOfSymbol(...) NULL
+    #endif
+#else
+    #error rd_route doesn't work on iOS
+#endif
+
 #import <mach-o/dyld.h>    // _dyld_*
 #import <mach-o/nlist.h>   // nlist/nlist_64
 #import <mach/mach_init.h> // mach_task_self()
