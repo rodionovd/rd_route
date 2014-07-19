@@ -55,7 +55,7 @@ typedef struct rd_injection {
 static mach_vm_size_t _get_image_size(void *image, mach_vm_size_t image_slide);
 static kern_return_t  _remap_image(void *image,  mach_vm_size_t image_slide, mach_vm_address_t *new_location);
 static kern_return_t  _insert_jmp(void* where, void* to);
-static kern_return_t  _patch_memory(void *address, mach_vm_size_t count, uint8_t *new_bytes);
+static kern_return_t  _patch_memory(void *address, mach_msg_type_number_t count, uint8_t *new_bytes);
 static void*          _function_ptr_from_name(const char *function_name, const char *suggested_image_name);
 static void*          _function_ptr_within_image(const char *function_name, void *macho_image_header, uintptr_t vm_image_slide);
 
@@ -261,9 +261,9 @@ static kern_return_t _insert_jmp(void* where, void* to)
 	 * and a relative one for i386.
 	 */
 #if defined (__x86_64__)
-	mach_vm_size_t size_of_jump = (sizeof(uintptr_t) * 2);
+	mach_msg_type_number_t size_of_jump = (sizeof(uintptr_t) * 2);
 #else
-	mach_vm_size_t size_of_jump = (sizeof(int) + 1);
+	mach_msg_type_number_t size_of_jump = (sizeof(int) + 1);
 #endif
 
 	kern_return_t err = KERN_SUCCESS;
@@ -285,7 +285,7 @@ static kern_return_t _insert_jmp(void* where, void* to)
 }
 
 
-static kern_return_t _patch_memory(void *address, mach_vm_size_t count, uint8_t *new_bytes)
+static kern_return_t _patch_memory(void *address, mach_msg_type_number_t count, uint8_t *new_bytes)
 {
 	if (count == 0) {
 		return KERN_SUCCESS;
