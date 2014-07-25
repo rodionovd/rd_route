@@ -58,6 +58,7 @@ static void test_rd_duplicate_function(void);
 
 int main(int argc, char const *argv[])
 {
+	setbuf(stderr, NULL);
 	test_rd_route();
 	test_rd_route_byname();
 	test_rd_duplicate_function();
