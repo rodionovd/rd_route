@@ -1,3 +1,4 @@
+[![Build Status](https://travis-ci.org/rodionovd/rd_route.svg?branch=master)](https://travis-ci.org/rodionovd/rd_route)
 > Do not use this code. It can destroy everthing.
 > But if you do, I wish you a luck.
 
