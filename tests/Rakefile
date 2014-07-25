@@ -5,24 +5,24 @@ class String
 	def nya;  "\033[35m#{self}\033[0m" end
 end
 
-task :default => [:build, :tests, :cleanup]
+task :default => [:build, :tests]
 
-desc "Build tests for «rd_route» with clang(32|64) and gcc(32|64)"
+desc "Build tests for 'rd_route' with clang(32|64) and gcc(32|64)"
 task :build do
 	# You can build with -DDEBUG to see tests' output
 	checker = 0
 	system("mkdir build") if (!File.exists?(Dir.getwd+"/build"))
-	puts "clang (i386)".nya
-	system("clang -arch i386  -DDEBUG -framework Foundation -o build/clang_i386 *.m ../*.c")
+	puts "Compile: clang (i386)".nya
+	system("clang -arch i386 -framework Foundation -o build/clang_i386 *.m ../*.c")
 	checker += 1 if $?.exitstatus != 0
-	puts "clang (x86_64)".nya
+	puts "Compile: clang (x86_64)".nya
 	system("clang -arch x86_64  -framework Foundation -o build/clang_x86_64  *.m ../*.c")
 	checker += 1 if $?.exitstatus != 0
-	puts "gcc (i386)".nya
+	puts "Compile: gcc (i386)".nya
 	system("gcc -arch i386  -framework Foundation -std=c99 -o build/gcc_i386 *.m ../*.c")
 	checker += 1 if $?.exitstatus != 0
-	puts "gcc (x86_64)".nya
-	system("gcc -arch x86_64  -framework Foundation -std=c99 -o build/gcc_x86_64 *.m ../*.c")
+	puts "Compile: gcc (x86_64)".nya
+	system("gcc -arch x86_64 -framework Foundation -std=c99 -o build/gcc_x86_64 *.m ../*.c")
 	checker += 1 if $?.exitstatus != 0
 
 	system("clear") if checker == 0
@@ -30,25 +30,24 @@ end
 
 task :tests do
 	checker = 0
-
 	arches = ["clang_i386", "clang_x86_64", "gcc_i386", "gcc_x86_64"]
 	arches.map { |a|
 		system("./build/#{a}")
 		checker += 1 if $?.exitstatus != 0
 		if ($?.exitstatus != 0) then
-			puts "#{a}: ".brown + "FAILED".red
+			puts "Test #{a}: ".brown + "FAIL".red
 		else
-			puts "#{a}: ".brown + "PASSED".green
+			puts "Test #{a}: ".brown + "OK".green
 		end
 	}
+	
+	system("rm -Rf ./build")
 
 	if (0 == checker) then
 		puts "Alright!".green
+		exit 0
 	else
 		puts "Not all tests passed".red
+		exit (-1)
 	end
-end
-
-task :cleanup do
-	system("rm -Rf ./build")
 end
