@@ -175,8 +175,8 @@ static kern_return_t _remap_image(void *image, mach_vm_size_t image_slide, mach_
 	 */
 	*new_location = 0;
 #if defined(__x86_64__)
-	err = mach_vm_allocate(mach_task_self(), new_location, image_size*3, VM_FLAGS_ANYWHERE);
-	mach_vm_size_t lefover = image_size * 2;
+	err = mach_vm_allocate(mach_task_self(), new_location, image_size*4, VM_FLAGS_ANYWHERE);
+	mach_vm_size_t lefover = image_size * 3;
 	*new_location += lefover;
 	mach_vm_deallocate(mach_task_self(), (*new_location - lefover), lefover);
 #else
