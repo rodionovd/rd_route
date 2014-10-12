@@ -21,8 +21,8 @@
 		#define mach_vm_write vm_write
 		#define mach_vm_remap vm_remap
 		#define mach_vm_protect vm_protect
-		#define NSLookupSymbolInImage(...) NULL
-		#define NSAddressOfSymbol(...) NULL
+		#define NSLookupSymbolInImage(...) ((void)0)
+		#define NSAddressOfSymbol(...) ((void)0)
 	#endif
 #else
 	#error rd_route doesn't work on iOS
