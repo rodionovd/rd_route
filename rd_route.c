@@ -2,17 +2,17 @@
 // This work is free. You can redistribute it and/or modify it
 // under the terms of the Do What The Fuck You Want To Public License, Version 2,
 // as published by Sam Hocevar. See the COPYING file for more details.
-#import <stdlib.h>         // realloc()
-#import <libgen.h>         // basename()
-#import <stdio.h>          // fprintf()
-#import <dlfcn.h>          // dladdr()
+#include <stdlib.h>         // realloc()
+#include <libgen.h>         // basename()
+#include <stdio.h>          // fprintf()
+#include <dlfcn.h>          // dladdr()
 
-#import "TargetConditionals.h"
+#include "TargetConditionals.h"
 #if defined(__i386__) || defined(__x86_64__)
     #if !(TARGET_IPHONE_SIMULATOR)
-        #import <mach/mach_vm.h> // mach_vm_*
+        #include <mach/mach_vm.h> // mach_vm_*
     #else
-        #import <mach/vm_map.h>  // vm_*
+        #include <mach/vm_map.h>  // vm_*
         #define mach_vm_address_t vm_address_t
         #define mach_vm_size_t vm_size_t
         #define mach_vm_allocate vm_allocate
@@ -27,10 +27,10 @@
     #error rd_route doesn't work on iOS
 #endif
 
-#import <mach-o/dyld.h>    // _dyld_*
-#import <mach-o/nlist.h>   // nlist/nlist_64
-#import <mach/mach_init.h> // mach_task_self()
-#import "rd_route.h"
+#include <mach-o/dyld.h>    // _dyld_*
+#include <mach-o/nlist.h>   // nlist/nlist_64
+#include <mach/mach_init.h> // mach_task_self()
+#include "rd_route.h"
 
 #define RDErrorLog(format, ...) fprintf(stderr, "%s:%d:\n\terror: "format"\n", \
 	__FILE__, __LINE__, ##__VA_ARGS__)
