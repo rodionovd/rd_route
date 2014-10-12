@@ -216,7 +216,7 @@ static kern_return_t _remap_image(void *image, mach_vm_size_t image_slide, mach_
 
 		err = mach_vm_remap(
 			/* Target information */
-			mach_task_self(), &seg_target,vmsize, 0x0,
+			mach_task_self(), &seg_target, vmsize, 0x0,
 			/* Flags */
 			(VM_FLAGS_FIXED | VM_FLAGS_OVERWRITE),
 			/* Source information */
