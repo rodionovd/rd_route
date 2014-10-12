@@ -407,10 +407,8 @@ static void* _function_ptr_within_image(const char *function_name, void *macho_i
 	for (uint32_t i = 0; i < symtab->nsyms; i++, sym++) {
 		if (!sym->n_value) continue;
 		const char *symbol_name = (const char *)strings + sym->n_un.n_strx;
-		if (0 == strcmp(symbol_name, function_name) ||
-			/* ignore leading "_" char */
-			0 == strcmp(symbol_name+1, function_name))
-		{
+		/* Ignore the leading underscore ("_") character for a real symbol name */
+		if (0 == strcmp(symbol_name+1, function_name)) {
 			return (void *)(sym->n_value + vmaddr_slide);
 		}
 	}
