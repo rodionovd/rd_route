@@ -52,7 +52,7 @@ typedef struct rd_injection {
 	mach_vm_address_t target_address;
 } rd_injection_t;
 
-static mach_vm_size_t _get_image_size(void *image, mach_vm_size_t image_slide);
+static mach_vm_size_t _image_size(void *image, mach_vm_size_t image_slide, mach_vm_address_t *data_segment_offset);
 static kern_return_t  _remap_image(void *image,  mach_vm_size_t image_slide, mach_vm_address_t *new_location);
 static kern_return_t  _insert_jmp(void* where, void* to);
 static kern_return_t  _patch_memory(void *address, mach_msg_type_number_t count, uint8_t *new_bytes);
@@ -165,23 +165,39 @@ int rd_duplicate_function(void *function, void **duplicate)
 
 static kern_return_t _remap_image(void *image, mach_vm_size_t image_slide, mach_vm_address_t *new_location)
 {
-	mach_vm_size_t image_size = _get_image_size(image, image_slide);
+	mach_vm_address_t data_segment_offset = 0;
+	mach_vm_size_t image_size = _image_size(image, image_slide, &data_segment_offset);
+
 	kern_return_t err = KERN_FAILURE;
-	/**
-	 * For some reason we need more free space when for 64-bit code.
-	 * Looks like _remap_image() remaps a "__DATA" section BEFORE target — SO BUG.
+	/*
+	 * On x86_64 for some images __DATA segment is mapped far from other segments.
+	 * To handle it we need to allocate a memory zone that has enough capacity
+	 * for both __DATA's island and the rest of the image.
 	 *
-	 * FIX OR DIE.
+	 * Since __DATA is mapped even *before* the actual image, we are going to have
+	 * a "safety zone" (the space between __TEXT and __DATA segments) by skipping
+	 * the first data_segment_offset bytes. Thus, __DATA will be remapped into a
+	 * valid (i.e. owned by user) memory space.
+	 * Here's a map of whole memory zone:
+	 *                                               image_size bytes
+	 *                                            ---------------------
+	 *        __DATA island                      /                     \
+	 *            /   \                         /                       \
+	 *	>--------*-----*-----------------------*------(...)------*-------*--->
+	 *           |                             |                 |
+	 *           |                             |                 |
+	 *        __DATA                        __TEXT          __LINKEDIT
+	 *           |                             |
+	 *           |                             |
+	 *      *new_location        *new_location + data_segment_offset
+	 *
+	 * NOTE: vmaddr(__TEXT) - vmaddr(__DATA) = const, so we can't remap __DATA
+	 * into any place we want.
 	 */
 	*new_location = 0;
-#if defined(__x86_64__)
-	err = mach_vm_allocate(mach_task_self(), new_location, image_size*4, VM_FLAGS_ANYWHERE);
-	mach_vm_size_t lefover = image_size * 3;
-	*new_location += lefover;
-	mach_vm_deallocate(mach_task_self(), (*new_location - lefover), lefover);
-#else
-	err = mach_vm_allocate(mach_task_self(), new_location, image_size, VM_FLAGS_ANYWHERE);
-#endif
+	err = mach_vm_allocate(mach_task_self(), new_location,
+	                      (image_size + data_segment_offset), VM_FLAGS_ANYWHERE);
+	*new_location += data_segment_offset;
 
 	if (KERN_SUCCESS != err) {
 		RDErrorLog("Failed to allocate a memory region for the function copy - mach_vm_allocate() returned 0x%x\n", err);
@@ -233,21 +249,32 @@ static kern_return_t _remap_image(void *image, mach_vm_size_t image_slide, mach_
 }
 
 
-static mach_vm_size_t _get_image_size(void *image, mach_vm_size_t image_slide)
+static mach_vm_size_t _image_size(void *image, mach_vm_size_t image_slide, mach_vm_address_t *data_segment_offset)
 {
 	const mach_header_t *header = (mach_header_t *)image;
 	struct load_command *cmd = (struct load_command *)(header + 1);
 
 	mach_vm_address_t image_addr = (mach_vm_address_t)image - image_slide;
 	mach_vm_address_t image_end = image_addr;
+	mach_vm_address_t data_vmaddr = 0, text_vmaddr = 0;
 
 	for (uint32_t i = 0; (i < header->ncmds); i++, cmd = (void *)cmd + cmd->cmdsize) {
 		if (cmd->cmd != LC_SEGMENT_ARCH_INDEPENDENT) continue;
 
 		segment_command_t *segment = (segment_command_t *)cmd;
+		if (0 == strcmp("__DATA", segment->segname)) {
+			data_vmaddr = segment->vmaddr;
+		}  else if (0 == strcmp("__TEXT", segment->segname)) {
+			text_vmaddr = segment->vmaddr;
+		}
+
 		if ((segment->vmaddr + segment->vmsize) > image_end) {
 			image_end = segment->vmaddr + segment->vmsize;
 		}
+	}
+
+	if (data_vmaddr < text_vmaddr) {
+		*data_segment_offset = text_vmaddr - data_vmaddr;
 	}
 
 	return (image_end - image_addr);
