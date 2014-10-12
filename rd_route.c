@@ -4,6 +4,7 @@
 // as published by Sam Hocevar. See the COPYING file for more details.
 #include <stdlib.h>         // realloc()
 #include <libgen.h>         // basename()
+#include <assert.h>         // assert()
 #include <stdio.h>          // fprintf()
 #include <dlfcn.h>          // dladdr()
 
@@ -165,6 +166,9 @@ int rd_duplicate_function(void *function, void **duplicate)
 
 static kern_return_t _remap_image(void *image, mach_vm_size_t image_slide, mach_vm_address_t *new_location)
 {
+	assert(image);
+	assert(new_location);
+
 	mach_vm_size_t image_size = _get_image_size(image, image_slide);
 	kern_return_t err = KERN_FAILURE;
 	/**
@@ -235,6 +239,8 @@ static kern_return_t _remap_image(void *image, mach_vm_size_t image_slide, mach_
 
 static mach_vm_size_t _get_image_size(void *image, mach_vm_size_t image_slide)
 {
+	assert(image);
+
 	const mach_header_t *header = (mach_header_t *)image;
 	struct load_command *cmd = (struct load_command *)(header + 1);
 
@@ -256,6 +262,8 @@ static mach_vm_size_t _get_image_size(void *image, mach_vm_size_t image_slide)
 
 static kern_return_t _insert_jmp(void* where, void* to)
 {
+	assert(where);
+	assert(to);
 	/**
 	 * We are going to use an absolute JMP instruction for x86_64
 	 * and a relative one for i386.
@@ -287,9 +295,9 @@ static kern_return_t _insert_jmp(void* where, void* to)
 
 static kern_return_t _patch_memory(void *address, mach_msg_type_number_t count, uint8_t *new_bytes)
 {
-	if (count == 0) {
-		return KERN_SUCCESS;
-	}
+	assert(address);
+	assert(count > 0);
+	assert(new_bytes);
 
 	kern_return_t kr = 0;
 	kr = mach_vm_protect(mach_task_self(), (mach_vm_address_t)address, (mach_vm_size_t)count, FALSE, VM_PROT_READ | VM_PROT_WRITE | VM_PROT_EXECUTE | VM_PROT_COPY);
@@ -314,6 +322,8 @@ static kern_return_t _patch_memory(void *address, mach_msg_type_number_t count, 
 
 static void* _function_ptr_from_name(const char *function_name, const char *suggested_image_name)
 {
+	assert(function_name);
+
 	for (uint32_t i = 0; i < _dyld_image_count(); i++) {
 		void *header = (void *)_dyld_get_image_header(i);
 		uintptr_t vmaddr_slide = _dyld_get_image_vmaddr_slide(i);
@@ -339,6 +349,8 @@ static void* _function_ptr_from_name(const char *function_name, const char *sugg
 
 static void* _function_ptr_within_image(const char *function_name, void *macho_image_header, uintptr_t vmaddr_slide)
 {
+	assert(function_name);
+	assert(macho_image_header);
 	/**
 	 * Try the system NSLookup API to find out the function's pointer withing the specifed header.
 	 */
