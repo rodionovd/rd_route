@@ -7,6 +7,10 @@
 #ifndef RD_ROUTE
 	#define RD_ROUTE
 
+#ifdef __cplusplus
+	extern "C" {
+#endif
+
 /**
  * Override `function` to jump directly into `replacement` location. Caller can later
  * access an original function's implementation via `original_ptr` (if passed).
@@ -45,6 +49,9 @@
  * @return KERN_SUCCESS if succeeded, or other value if failed
  */
 	int rd_duplicate_function(void *function, void **duplicate);
+
+#ifdef __cplusplus
+	}
 #endif
 
-
+#endif /* RD_ROUTE */
