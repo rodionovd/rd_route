@@ -1,6 +1,6 @@
-#import <Foundation/Foundation.h>
-#import <mach-o/dyld.h>
-#import "../rd_route.h"
+#include <CoreFoundation/CoreFoundation.h>
+#include <mach-o/dyld.h>
+#include "../rd_route.h"
 
 #if !defined(DEBUG)
 	#define fprintf(file, format, ...)
