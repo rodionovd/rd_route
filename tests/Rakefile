@@ -13,16 +13,16 @@ task :build do
 	checker = 0
 	system("mkdir build") if (!File.exists?(Dir.getwd+"/build"))
 	puts "Compile: clang (i386)".nya
-	system("clang -arch i386 -framework Foundation -o build/clang_i386 *.m ../*.c")
+	system("clang -arch i386 -framework CoreFoundation -o build/clang_i386 test_route.c ../rd_route.c")
 	checker += 1 if $?.exitstatus != 0
 	puts "Compile: clang (x86_64)".nya
-	system("clang -arch x86_64  -framework Foundation -o build/clang_x86_64  *.m ../*.c")
+	system("clang -arch x86_64  -framework CoreFoundation -o build/clang_x86_64 test_route.c ../rd_route.c")
 	checker += 1 if $?.exitstatus != 0
 	puts "Compile: gcc (i386)".nya
-	system("gcc -arch i386  -framework Foundation -std=c99 -o build/gcc_i386 *.m ../*.c")
+	system("gcc -arch i386  -framework CoreFoundation -std=c99 -o build/gcc_i386 test_route.c ../rd_route.c")
 	checker += 1 if $?.exitstatus != 0
 	puts "Compile: gcc (x86_64)".nya
-	system("gcc -arch x86_64 -framework Foundation -std=c99 -o build/gcc_x86_64 *.m ../*.c")
+	system("gcc -arch x86_64 -framework CoreFoundation -std=c99 -o build/gcc_x86_64 test_route.c ../rd_route.c")
 	checker += 1 if $?.exitstatus != 0
 
 	system("clear") if checker == 0
@@ -40,7 +40,7 @@ task :tests do
 			puts "Test #{a}: ".brown + "OK".green
 		end
 	}
-	
+
 	system("rm -Rf ./build")
 
 	if (0 == checker) then
