@@ -56,7 +56,7 @@ int main (void)
 
 ### But wait, we already have `mach_override` for this stuff
 
-I've created this library because [`mach_override`](https://github.com/rentzsch/mach_override) requires an external disassembler in order to work properly. For those of us who don't want another few thousands of lines of foreign code in their projects, the only option to use `mach_override` is to hard-code every function prologue they know in order to patch it correctly — which isn't a great alternative to have, to be honest.
+I've created this library because [`mach_override`](https://github.com/rentzsch/mach_override) requires an external disassembler in order to work properly. For those of us who don't want another few thousands of lines of foreign code in their projects, the only option is to hard-code every function prologue they know in order to patch it correctly — which isn't a great alternative to have, to be honest.
 
 ### Credits
 
