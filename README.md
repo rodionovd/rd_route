@@ -7,19 +7,6 @@ Replace (aka «hook» or «override» or «route») implementation of any C func
 **NOTE**: `rd_route` **won't work on iOS**.  You should take a look at [`libevil`](https://github.com/landonf/libevil_patch) instead.
 
 
-### Integration
- 
-#### Using git submodules
-
-```bash
-$ cd /your/project/path
-$ git submodule add https://github.com/rodionovd/rd_route
-```
-
-#### Using CocoaPods
-
-*Coming soon.*
-
 ### Usage 
 
 ```c
@@ -51,6 +38,20 @@ int main (void)
     return 0;
 }
 ```
+
+### Integration
+ 
+#### Using git submodules
+
+```bash
+$ cd /your/project/path
+$ git submodule add https://github.com/rodionovd/rd_route
+```
+
+#### Using CocoaPods
+
+*Coming soon.*
+
 
 ----
 
