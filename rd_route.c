@@ -1,7 +1,9 @@
-// Copyright © 2014 Dmitry Rodionov i.am.rodionovd@gmail.com
-// This work is free. You can redistribute it and/or modify it
-// under the terms of the Do What The Fuck You Want To Public License, Version 2,
-// as published by Sam Hocevar. See the COPYING file for more details.
+// rd_route.c
+// Copyright (c) 2014-2015 Dmitry Rodionov
+//
+// This software may be modified and distributed under the terms
+// of the MIT license.  See the LICENSE file for details.
+
 #include <stdlib.h>         // realloc()
 #include <libgen.h>         // basename()
 #include <assert.h>         // assert()

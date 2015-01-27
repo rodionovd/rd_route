@@ -1,8 +1,8 @@
-// Copyright © 2014 Dmitry Rodionov i.am.rodionovd@gmail.com
-// This work is free. You can redistribute it and/or modify it
-// under the terms of the Do What The Fuck You Want To Public License, Version 2,
-// as published by Sam Hocevar. See the COPYING file for more details.
-
+// rd_route.h
+// Copyright (c) 2014-2015 Dmitry Rodionov
+//
+// This software may be modified and distributed under the terms
+// of the MIT license.  See the LICENSE file for details.
 
 #ifndef RD_ROUTE
 	#define RD_ROUTE
@@ -23,7 +23,7 @@
  *
  * @return             KERN_SUCCESS if succeeded, or other value if failed
  */
-	int rd_route(void *function, void *replacement, void **original);
+int rd_route(void *function, void *replacement, void **original);
 
 /**
  * The same as rd_route(), but the target function is defined with its name, not its symbol pointer.
@@ -39,7 +39,7 @@
  *
  * @return               see rd_route() for the list of possible return values
  */
-	int rd_route_byname(const char *function_name, const char *image_name, void *replacement, void **original);
+int rd_route_byname(const char *function_name, const char *image_name, void *replacement, void **original);
 
 /**
  * Copy `function` implementation into another (first available) memory region.
@@ -48,7 +48,7 @@
  *
  * @return KERN_SUCCESS if succeeded, or other value if failed
  */
-	int rd_duplicate_function(void *function, void **duplicate);
+int rd_duplicate_function(void *function, void **duplicate);
 
 #ifdef __cplusplus
 	}
