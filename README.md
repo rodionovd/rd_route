@@ -152,5 +152,5 @@ If you found any bug(s) or something, please open an issue or a pull request —
 
 ------
 
-*Dmitry Rodionov, 2014*
+*Dmitry Rodionov, 2014-2015*
 *i.am.rodionovd@gmail.com*
