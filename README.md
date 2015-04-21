@@ -49,11 +49,9 @@ int main (void)
 $ cd /your/project/path
 $ git submodule add https://github.com/rodionovd/rd_route
 ```
+#### Not using git submodules  
 
-#### Using CocoaPods
-
-*Coming soon.*
-
+Just copy `rd_route.h` and `rd_route.c` files into your project's directory.  
 
 ----
 
