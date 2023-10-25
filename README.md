@@ -1,15 +1,12 @@
-## rd_route  
+# rd_route  
 [![Build Status](https://travis-ci.org/rodionovd/rd_route.svg?branch=master)](https://travis-ci.org/rodionovd/rd_route)  
-Replace (aka «hook» or «override» or «route») implementation of any C function in runtime. Works on OS X with Mach–O binaries.
+Replace (aka «hook» or «override» or «route») implementation of any C function in runtime. Works on MacOS with Mach–O binaries.
 
-> Do not use this code. It can destroy everthing.
-> But if you do, I wish you a luck.
-  
-**NOTE**: `rd_route` **won't work on iOS**.  You should take a look at [`libevil`](https://github.com/landonf/libevil_patch) instead.  
-Aaand it won't work for you too [if you're targeting ARM64](https://github.com/landonf/libevil_patch/issues/1). Unfortunately I don't have a modern iOS device and thus unable to look into it, but maybe you do? 
+**⚠ Might not work for you, it's experimental. You may also wan't to checkout [ChickenHook](https://github.com/ChickenHook/ChickenHook) 🤔**
 
+Architectures: x86_64, ARM64 and even i386.
 
-### Usage 
+### Usage
 
 ```c
 #include <assert.h>
@@ -87,6 +84,6 @@ If you found any bug(s) or something, please open an issue or a pull request —
 
 ------
 
-*Dmitry Rodionov, 2014-2015*  
+*Dmitry Rodionov, 2014-2015*
 *i.am.rodionovd@gmail.com*
 
