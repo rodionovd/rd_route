@@ -13,12 +13,18 @@ Aaand it won't work for you too [if you're targeting ARM64](https://github.com/l
 
 ```c
 #include <assert.h>
+#include <string.h>
+#include <stdio.h>
 #include "rd_route.h"
-
 
 static char* my_strerror(int err)
 {
   return "It's OK";
+}
+
+static char* my_super_strerror(int err)
+{
+  return "It's super OK";
 }
 
 int main (void)
@@ -27,15 +33,25 @@ int main (void)
     void *(*original)(int) = NULL;
     int err = 2;
 
-    printf("Error(%d): %s", err, strerror(err));
-    // >> No such file or directory
-
+    // hook strerror with my_strerror and backup implementation at original
     rd_route(strerror, my_strerror, (void **)&original);
     
     // See if the patch works
     assert(0 == strcmp("It's OK", strerror(err)));
+
     // See if an original implementation is still available
     assert(0 == strcmp("No such file or directory", original(err)));
+
+
+    // hook my_strerror by name with my_super_strerror and backup patched implementation at original
+    rd_route_byname("my_strerror", NULL, my_super_strerror, (void **)&original);
+
+    // See if the patch by name works
+    assert(0 == strcmp("It's super OK", my_strerror(err)));
+    assert(0 == strcmp("It's super OK", strerror(err)));
+
+    // See if an original patched implementation is still available
+    assert(0 == strcmp("It's OK", original(err)));
 
     return 0;
 }
