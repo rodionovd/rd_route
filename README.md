@@ -1,22 +1,27 @@
-## rd_route  
-Replace (aka «hook» or «override» or «route») implementation of any C function in runtime. Works on OS X with Mach-O binaries.
+# rd_route  
+[![Build Status](https://travis-ci.org/rodionovd/rd_route.svg?branch=master)](https://travis-ci.org/rodionovd/rd_route)  
+Replace (aka «hook» or «override» or «route») implementation of any C function in runtime. Works on MacOS with Mach–O binaries.
 
-> Do not use this code. It can destroy everthing.
-> But if you do, I wish you a luck.
-  
-**NOTE**: `rd_route` **won't work on iOS**.  You should take a look at [`libevil`](https://github.com/landonf/libevil_patch) instead.
+**⚠ Might not work for you, it's experimental. You may also wan't to checkout [ChickenHook](https://github.com/ChickenHook/ChickenHook) 🤔**
 
+Architectures: x86_64, ARM64 and even i386.
 
-### Usage 
+### Usage
 
 ```c
 #include <assert.h>
+#include <string.h>
+#include <stdio.h>
 #include "rd_route.h"
-
 
 static char* my_strerror(int err)
 {
   return "It's OK";
+}
+
+static char* my_super_strerror(int err)
+{
+  return "It's super OK";
 }
 
 int main (void)
@@ -25,15 +30,25 @@ int main (void)
     void *(*original)(int) = NULL;
     int err = 2;
 
-    printf("Error(%d): %s", err, strerror(err));
-    // >> No such file or directory
-
+    // hook strerror with my_strerror and backup implementation at original
     rd_route(strerror, my_strerror, (void **)&original);
     
     // See if the patch works
     assert(0 == strcmp("It's OK", strerror(err)));
+
     // See if an original implementation is still available
     assert(0 == strcmp("No such file or directory", original(err)));
+
+
+    // hook my_strerror by name with my_super_strerror and backup patched implementation at original
+    rd_route_byname("my_strerror", NULL, my_super_strerror, (void **)&original);
+
+    // See if the patch by name works
+    assert(0 == strcmp("It's super OK", my_strerror(err)));
+    assert(0 == strcmp("It's super OK", strerror(err)));
+
+    // See if an original patched implementation is still available
+    assert(0 == strcmp("It's OK", original(err)));
 
     return 0;
 }
@@ -47,11 +62,9 @@ int main (void)
 $ cd /your/project/path
 $ git submodule add https://github.com/rodionovd/rd_route
 ```
+#### Not using git submodules  
 
-#### Using CocoaPods
-
-*Coming soon.*
-
+Just copy `rd_route.h` and `rd_route.c` files into your project's directory.  
 
 ----
 
@@ -71,6 +84,6 @@ If you found any bug(s) or something, please open an issue or a pull request —
 
 ------
 
-*Dmitry Rodionov, 2014-2015*  
+*Dmitry Rodionov, 2014-2015*
 *i.am.rodionovd@gmail.com*
 
