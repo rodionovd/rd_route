@@ -11,7 +11,7 @@
 #include <dlfcn.h>          // dladdr()
 
 #include "TargetConditionals.h"
-#if defined(__i386__) || defined(__x86_64__)
+#if defined(__i386__) || defined(__x86_64__) || defined(__aarch64__)
 	#if !(TARGET_IPHONE_SIMULATOR)
 		#include <mach/mach_vm.h> // mach_vm_*
 	#else
@@ -27,7 +27,7 @@
 		#define NSAddressOfSymbol(...) ((void)0)
 	#endif
 #else
-	#error rd_route doesn't work on iOS
+	#error rd_route not implemented for Arch
 #endif
 
 #include <mach-o/dyld.h>    // _dyld_*
@@ -38,7 +38,7 @@
 #define RDErrorLog(format, ...) fprintf(stderr, "%s:%d:\n\terror: "format"\n", \
 	__FILE__, __LINE__, ##__VA_ARGS__)
 
-#if defined(__x86_64__)
+#if defined(__x86_64__) || defined(__aarch64__)
 	typedef struct mach_header_64     mach_header_t;
 	typedef struct segment_command_64 segment_command_t;
 	#define LC_SEGMENT_ARCH_INDEPENDENT   LC_SEGMENT_64
@@ -297,7 +297,7 @@ static kern_return_t _insert_jmp(void* where, void* to)
 	 * We are going to use an absolute JMP instruction for x86_64
 	 * and a relative one for i386.
 	 */
-#if defined (__x86_64__)
+#if defined (__x86_64__) || defined(__aarch64__)
 	mach_msg_type_number_t size_of_jump = (sizeof(uintptr_t) * 2);
 #else
 	mach_msg_type_number_t size_of_jump = (sizeof(int) + 1);
@@ -310,6 +310,17 @@ static kern_return_t _insert_jmp(void* where, void* to)
 	opcodes[1] = 0x25;
 	*((int*)&opcodes[2]) = 0;
 	*((uintptr_t*)&opcodes[6]) = (uintptr_t)to;
+	err = _patch_memory((void *)where, size_of_jump, opcodes);
+#elif defined(__aarch64__)
+	opcodes[0] = 0x49;
+	opcodes[1] = 0x00;
+	opcodes[2] = 0x00;
+	opcodes[3] = 0x58;
+	opcodes[4] = 0x20;
+	opcodes[5] = 0x01;
+	opcodes[6] = 0x1f;
+	opcodes[7] = 0xd6;
+	*((uintptr_t*)&opcodes[8]) = (uintptr_t)to;
 	err = _patch_memory((void *)where, size_of_jump, opcodes);
 #else
 	int offset = (int)(to - where - size_of_jump);
